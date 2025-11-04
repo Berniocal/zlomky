@@ -35,7 +35,7 @@
   .grid{display:grid;gap:12px}
   .qcard{background:var(--card);border:1px solid #1a2744;border-radius:16px;padding:14px}
   .qtitle{color:var(--muted);font-size:13px;margin-bottom:6px}
-  .qtext{font-size:22px}
+  .qtext{font-size:22px; line-height:1.2; white-space:nowrap; display:inline-block}
   .opts{display:grid;gap:10px;margin-top:12px}
   .opt{border:1px solid #273454;background:#141d34;border-radius:12px;padding:10px 12px;cursor:pointer;text-align:left}
   .opt:hover{background:#18223c}
@@ -45,10 +45,22 @@
   .footer{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
   .sep{height:1px;background:#1b2946;margin:14px 0}
 
-  /* Zlomky pod sebou */
-  .frac{display:inline-grid;grid-template-rows:auto auto;line-height:1}
-  .num,.den{display:block;text-align:center;padding:0 2px}
-  .bar{height:1px;background:#cfe3ff;margin:2px 0}
+  /* Zlomky pod sebou (jednoduché) */
+  .frac{
+    display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
+    vertical-align:middle; line-height:1;
+  }
+  .frac .num, .frac .den{padding:0 4px; text-align:center; display:block}
+  .frac .bar{height:2px; width:100%; background:#cfe3ff; margin:2px 0}
+
+  /* Složené zlomky (čitatel i jmenovatel můžou být celé výrazy) */
+  .cfrac{
+    display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
+    vertical-align:middle; line-height:1;
+  }
+  .cfrac .num, .cfrac .den{padding:0 6px; text-align:center; display:block}
+  .cfrac .bar{height:2px; width:100%; background:#cfe3ff; margin:4px 0}
+
   .mixed{display:inline-flex;gap:6px;align-items:center}
   .hidden{display:none}
 
@@ -114,7 +126,9 @@ function fromDec(str){
   const num = parseInt(i||'0',10)*den + (str.startsWith('-') ? -parseInt(dec,10) : parseInt(dec,10));
   return simplify({num,den});
 }
-function toDisplay(fr){
+
+/* -------- vykreslování -------- */
+function toDisplay(fr){ // jednoduchý zlomek / smíšené
   fr = simplify(fr);
   if(fr.den===1) return `${fr.num}`;
   const sgn = fr.num<0 ? -1 : 1;
@@ -125,6 +139,9 @@ function toDisplay(fr){
     return `<span class="mixed"><span>${w}</span><span class="frac"><span class="num">${r}</span><span class="bar"></span><span class="den">${fr.den}</span></span></span>`;
   }
   return `<span class="frac"><span class="num">${fr.num}</span><span class="bar"></span><span class="den">${fr.den}</span></span>`;
+}
+function fracHTML(numHTML, denHTML){ // složený zlomek s libovolným obsahem
+  return `<span class="cfrac"><span class="num">${numHTML}</span><span class="bar"></span><span class="den">${denHTML}</span></span>`;
 }
 function eq(a,b){a=simplify(a);b=simplify(b);return a.num===b.num && a.den===b.den}
 
@@ -185,18 +202,18 @@ CATS[1].items.push(
   (function(){ const a=divr(fromDec("7,5"), mix(1,1,4)); return Q(`7,5 : ${toDisplay(mix(1,1,4))}`, a); })()
 );
 
-/* 3) Složené zlomky */
+/* 3) Složené zlomky — teď hezky nad sebou */
 CATS[2].items.push(
-  (function(){ const a=divr(f(1,2),f(3,4)); return Q(`${toDisplay(f(1,2))} / ${toDisplay(f(3,4))}`, a); })(),
-  (function(){ const a=divr(f(3,5),f(6,25)); return Q(`${toDisplay(f(3,5))} / ${toDisplay(f(6,25))}`, a); })(),
-  (function(){ const a=divr(f(4,7),f(8,21)); return Q(`${toDisplay(f(4,7))} / ${toDisplay(f(8,21))}`, a); })(),
-  (function(){ const a=divr(f(9,10),f(3,20)); return Q(`${toDisplay(f(9,10))} / ${toDisplay(f(3,20))}`, a); })(),
-  (function(){ const a=divr(f(2,3),f(5,9)); return Q(`${toDisplay(f(2,3))} / ${toDisplay(f(5,9))}`, a); })(),
-  (function(){ const a=divr(f(5,8),f(3,16)); return Q(`${toDisplay(f(5,8))} / ${toDisplay(f(3,16))}`, a); })(),
-  (function(){ const a=divr(f(7,12),f(14,9)); return Q(`${toDisplay(f(7,12))} / ${toDisplay(f(14,9))}`, a); })(),
-  (function(){ const a=divr(f(4,15),f(2,9)); return Q(`${toDisplay(f(4,15))} / ${toDisplay(f(2,9))}`, a); })(),
-  (function(){ const a=divr(f(3,5), mix(1,1,4)); return Q(`${toDisplay(f(3,5))} / ${toDisplay(mix(1,1,4))}`, a); })(),
-  (function(){ const a=divr(fromDec("2,4"), f(3,8)); return Q(`2,4 / ${toDisplay(f(3,8))}`, a); })()
+  (function(){ const a=divr(f(1,2),f(3,4)); return Q(`${fracHTML(toDisplay(f(1,2)), toDisplay(f(3,4)))}`, a); })(),
+  (function(){ const a=divr(f(3,5),f(6,25)); return Q(`${fracHTML(toDisplay(f(3,5)), toDisplay(f(6,25)))}`, a); })(),
+  (function(){ const a=divr(f(4,7),f(8,21)); return Q(`${fracHTML(toDisplay(f(4,7)), toDisplay(f(8,21)))}`, a); })(),
+  (function(){ const a=divr(f(9,10),f(3,20)); return Q(`${fracHTML(toDisplay(f(9,10)), toDisplay(f(3,20)))}`, a); })(),
+  (function(){ const a=divr(f(2,3),f(5,9)); return Q(`${fracHTML(toDisplay(f(2,3)), toDisplay(f(5,9)))}`, a); })(),
+  (function(){ const a=divr(f(5,8),f(3,16)); return Q(`${fracHTML(toDisplay(f(5,8)), toDisplay(f(3,16)))}`, a); })(),
+  (function(){ const a=divr(f(7,12),f(14,9)); return Q(`${fracHTML(toDisplay(f(7,12)), toDisplay(f(14,9)))}`, a); })(),
+  (function(){ const a=divr(f(4,15),f(2,9)); return Q(`${fracHTML(toDisplay(f(4,15)), toDisplay(f(2,9)))}`, a); })(),
+  (function(){ const a=divr(f(3,5), mix(1,1,4)); return Q(`${fracHTML(toDisplay(f(3,5)), toDisplay(mix(1,1,4)))}`, a); })(),
+  (function(){ const a=divr(fromDec("2,4"), f(3,8)); return Q(`${fracHTML("2,4", toDisplay(f(3,8)))}`, a); })()
 );
 
 /* 4) Sčítání/odčítání */
@@ -205,7 +222,7 @@ CATS[3].items.push(
   (function(){ const a=sub(f(3,4),f(1,8)); return Q(`${toDisplay(f(3,4))} - ${toDisplay(f(1,8))}`, a); })(),
   (function(){ const a=add(f(2,5),f(3,10)); return Q(`${toDisplay(f(2,5))} + ${toDisplay(f(3,10))}`, a); })(),
   (function(){ const a=sub(f(7,12),f(1,6)); return Q(`${toDisplay(f(7,12))} - ${toDisplay(f(1,6))}`, a); })(),
-  (function(){ const a=add(mix(1,1,3), f(3,4)); return Q(`${toDisplay(mix(1,1,3))} + ${toDisplay(f(3,4))}`, a); })(),
+  (function(){ const a=add(mix(1,1,3), f(3,4)); return Q(`${toDisplay(mix(1,1,3))} + ${toDisplay(f(3,4))}`, a); })()},
   (function(){ const a=sub(mix(2,1,5), f(2,3)); return Q(`${toDisplay(mix(2,1,5))} - ${toDisplay(f(2,3))}`, a); })(),
   (function(){ const a=add(fromDec("0,75"), f(3,8)); return Q(`0,75 + ${toDisplay(f(3,8))}`, a); })(),
   (function(){ const a=sub(fromDec("1,2"), f(2,5)); return Q(`1,2 - ${toDisplay(f(2,5))}`, a); })(),
@@ -227,7 +244,7 @@ CATS[4].items.push(
   (function(){ const a=sub(fromDec("9,75"), mix(4,1,2)); return Q(`9,75 - ${toDisplay(mix(4,1,2))}`, a); })()
 );
 
-/* 6) Mix (kombinované) */
+/* 6) Mix (kombinované) – upraveno, kde byl „/“ */
 CATS[5].items.push(
   (function(){ const a=add(add(f(1,4),f(1,6)), f(1,3)); return Q(`${toDisplay(f(1,4))} + ${toDisplay(f(1,6))} + ${toDisplay(f(1,3))}`, a); })(),
   (function(){ const a=mul(add(f(2,3),f(1,4)), f(3,5)); return Q(`( ${toDisplay(f(2,3))} + ${toDisplay(f(1,4))} ) · ${toDisplay(f(3,5))}`, a); })(),
@@ -235,11 +252,11 @@ CATS[5].items.push(
   (function(){ const a=divr(add(f(3,5),f(1,2)), f(7,10)); return Q(`\\big( ${toDisplay(f(3,5))} + ${toDisplay(f(1,2))} \\big) : ${toDisplay(f(7,10))}`, a); })(),
   (function(){ const a=add(mix(1,1,3), mul(f(5,6), f(9,10))); return Q(`${toDisplay(mix(1,1,3))} + ${toDisplay(f(5,6))} · ${toDisplay(f(9,10))}`, a); })(),
   (function(){ const a=divr(sub(fromDec("2,4"), f(3,5)), f(3,4)); return Q(`( 2,4 - ${toDisplay(f(3,5))} ) : ${toDisplay(f(3,4))}`, a); })(),
-  (function(){ const a=sub(divr(f(7,12), f(5,18)), f(1,3)); return Q(`${toDisplay(f(7,12))} / ${toDisplay(f(5,18))} - ${toDisplay(f(1,3))}`, a); })(),
+  (function(){ const a=sub(divr(f(7,12), f(5,18)), f(1,3)); return Q(`${fracHTML(toDisplay(f(7,12)), toDisplay(f(5,18)))} - ${toDisplay(f(1,3))}`, a); })(),
   (function(){ const a=mul(sub(mix(1,3,4), f(2,3)), add(f(3,5), fromDec("0,2"))); return Q(`( ${toDisplay(mix(1,3,4))} - ${toDisplay(f(2,3))} ) · ( ${toDisplay(f(3,5))} + 0,2 )`, a); })(),
-  (function(){ const a=divr(add(f(4,9),f(5,6)), sub(mix(1,1,2), f(3,8))); return Q(`( ${toDisplay(f(4,9))} + ${toDisplay(f(5,6))} ) : ( ${toDisplay(mix(1,1,2))} - ${toDisplay(f(3,8))} )`, a); })(),
+  (function(){ const a=divr(add(f(4,9),f(5,6)), sub(mix(1,1,2), f(3,8))); return Q(`${fracHTML( (toDisplay(f(4,9))+' + '+toDisplay(f(5,6))), (toDisplay(mix(1,1,2))+' - '+toDisplay(f(3,8))) )}`, a); })(),
   (function(){ const a=divr(mul(add(mix(2,2,3), f(7,12)), sub(fromDec("0,75"), f(1,5))), add(f(3,4), f(2,9)));
-    return Q(`\\dfrac{ ( ${toDisplay(mix(2,2,3))} + ${toDisplay(f(7,12))} ) · ( 0,75 - ${toDisplay(f(1,5))} ) }{ ${toDisplay(f(3,4))} + ${toDisplay(f(2,9))} }`, a);
+    return Q(`${fracHTML( '( '+toDisplay(mix(2,2,3))+' + '+toDisplay(f(7,12))+' ) · ( 0,75 - '+toDisplay(f(1,5))+' )', (toDisplay(f(3,4))+' + '+toDisplay(f(2,9))) )}`, a);
   })()
 );
 
