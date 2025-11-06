@@ -171,12 +171,16 @@ CATS[0].items.push(
     return Q(`${fracHTML( toDisplay(mix(1,1,2)), toDisplay(f(3,5)) )} · ${toDisplay(f(4,7))}`, a); })(),
   (function(){ const a=add(divr(fromDec("0,8"), f(2,5)), f(1,6));
     return Q(`${fracHTML('0,8', toDisplay(f(2,5)))} + ${toDisplay(f(1,6))}`, a); })(),
-  (function(){ const b=divr(f(3,7), f(6,35)); const a=divr(f(5,8), b);
-    return Q(`${fracHTML( toDisplay(f(5,8)), fracHTML(toDisplay(f(3,7)), toDisplay(f(6,35))) )}`, a);
+ (function(){ const b=divr(f(3,7), f(6,35)); const a=divr(f(5,8), b);
+  return Q(`${fracHTML( toDisplay(f(5,8)), fracHTML(toDisplay(f(3,7)), toDisplay(f(6,35))) )}`, a);
+})(),
+
   (function(){ const a=divr(sub(mix(1,3,4), f(2,5)), sub(f(7,10), f(1,4)));
     return Q(`${fracHTML( '('+toDisplay(mix(1,3,4))+' − '+toDisplay(f(2,5))+')', '('+toDisplay(f(7,10))+' − '+toDisplay(f(1,4))+')' )}`, a); })(),
-  (function(){ const a=divr(mul(f(12,7), f(14,9)), add(f(5,6), f(1,3)));
-   return Q(`${fracHTML( toDisplay(f(12,7))+' · '+toDisplay(f(14,9)), fracHTML(toDisplay(f(4,15)), toDisplay(f(2,9))) )}`, a);
+(function(){ const a=divr(mul(f(12,7), f(14,9)), add(f(5,6), f(1,3)));
+  return Q(`${fracHTML( toDisplay(f(12,7))+' · '+toDisplay(f(14,9)), fracHTML(toDisplay(f(4,15)), toDisplay(f(2,9))) )}`, a);
+})(),
+
   (function(){ const a=divr(add(f(3,5), fromDec("0,4")), mix(1,1,4));
     return Q(`${fracHTML( toDisplay(f(3,5))+' + 0,4', toDisplay(mix(1,1,4)) )}`, a); })(),
   (function(){ const a=mul(divr(f(7,12), f(5,18)), sub(mix(2,1,3), fromDec("0,5")));
@@ -222,9 +226,13 @@ CATS[2].items.push(
   (function(){ const a=mul(divr(add(f(3,5), f(1,2)), sub(f(7,10), f(1,5))), f(4,7));
     return Q(`${fracHTML( toDisplay(f(3,5))+' + '+toDisplay(f(1,2)), toDisplay(f(7,10))+' − '+toDisplay(f(1,5)) )} · ${toDisplay(f(4,7))}`, a); })(),
   (function(){ const a=divr(mul(f(12,7), f(14,9)), divr(f(4,15), f(2,9)));
-    return Q(`${fracHTML( toDisplay(f(12,7))+' · '+toDisplay(f(14,9)), ${fracHTML(toDisplay(f(4,15)),toDisplay(f(2,9)))} )}`, a); })(),
+  return Q(`${fracHTML( toDisplay(f(12,7))+' · '+toDisplay(f(14,9)), fracHTML(toDisplay(f(4,15)),toDisplay(f(2,9))) )}`, a); 
+})(),
+
   (function(){ const n=divr(add(f(3,5), f(1,2)), f(7,10)); const a=divr(n, sub(mix(2,1,4), f(1,3)));
-    return Q(`${fracHTML( fracHTML( toDisplay(f(3,5))+' + '+toDisplay(f(1,2)), toDisplay(f(7,10)) ), '( '+toDisplay(mix(2,1,4))+' − '+toDisplay(f(1,3))+' )' )}`, a);
+  return Q(`${fracHTML( fracHTML( toDisplay(f(3,5))+' + '+toDisplay(f(1,2)), toDisplay(f(7,10)) ), '( '+toDisplay(mix(2,1,4))+' − '+toDisplay(f(1,3))+' )' )}`, a);
+})(),
+
   (function(){ const a=mul(divr(add(mix(2,2,3), f(7,12)), add(f(3,4), f(2,9))), sub(fromDec("0,75"), f(1,5)));
     return Q(`${fracHTML( toDisplay(mix(2,2,3))+' + '+toDisplay(f(7,12)), toDisplay(f(3,4))+' + '+toDisplay(f(2,9)) )} · ( 0,75 − ${toDisplay(f(1,5))} )`, a); })(),
   (function(){ const a=divr(divr(sub(f(7,9), f(2,7)), add(f(5,6), f(1,3))), sub(fromDec("1,2"), f(2,5)));
