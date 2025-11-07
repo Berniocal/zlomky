@@ -3,44 +3,76 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Zlomky – procvičování</title>
+  <title>Procvičování – zlomky & procenta</title>
   <meta name="theme-color" content="#0b1323">
   <style>
     :root {
       --bg:#0b1323; --panel:#0f1729; --text:#e6eef8; --muted:#9fb0c7; --accent:#60a5fa;
       --ok:#22c55e; --warn:#f59e0b;
     }
-    * { box-sizing:border-box; }
-    html, body {
+    *{box-sizing:border-box}
+    html,body{
       height:100%; margin:0;
       background:linear-gradient(180deg,var(--bg),var(--panel));
-      color:var(--text); font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      color:var(--text); font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       display:flex; align-items:center; justify-content:center; text-align:center;
     }
-    main {
-      max-width:500px; width:90%;
-      background:var(--panel);
-      border-radius:16px; padding:32px;
-      box-shadow:0 4px 24px rgba(0,0,0,0.4);
+    main{
+      max-width:min(820px,96vw); width:100%;
+      background:var(--panel); border-radius:18px; padding:28px;
+      box-shadow:0 4px 28px rgba(0,0,0,.45);
     }
-    h1 { margin-top:0; font-size:1.8em; color:var(--accent); }
-    p { color:var(--muted); margin-bottom:32px; }
-    a {
-      display:block; margin:12px 0; padding:16px;
-      background:var(--accent); color:white; text-decoration:none;
-      font-size:1.1em; border-radius:12px; font-weight:600;
-      transition:0.2s;
+    h1{margin:0 0 6px; font-size:1.9rem; color:var(--accent)}
+    p.lead{margin:0 0 22px; color:var(--muted)}
+    .section{margin:18px 0; text-align:left}
+    .section h2{margin:0 0 10px; font-size:1.1rem; color:#cfe3ff}
+    .grid{
+      display:grid; gap:12px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     }
-    a:hover { transform:translateY(-2px); background:#74b9ff; }
-    footer { margin-top:24px; font-size:0.85em; color:var(--muted); }
+    a.card{
+      display:block; text-decoration:none; color:#fff;
+      padding:16px; border-radius:14px; border:1px solid #223252;
+      background:#101a2f; transition:.18s;
+    }
+    a.card:hover{transform:translateY(-2px); background:#14203a}
+    .tag{display:inline-block; font-size:.78rem; color:var(--muted); border:1px solid #2a3a5e; padding:2px 8px; border-radius:999px; margin-top:8px}
+    footer{margin-top:20px; color:var(--muted); font-size:.9rem}
   </style>
 </head>
 <body>
   <main>
-    <h1>Procvičování zlomků</h1>
-    <p>Vyber si obtížnost cvičení:</p>
-    <a href="light.html">🥇 Lehčí procvičování</a>
-    <a href="hard.html">🏆 Těžší procvičování</a>
+    <h1>Procvičování – zlomky & procenta</h1>
+    <p class="lead">Vyber si téma a obtížnost.</p>
+
+    <div class="section">
+      <h2>🧮 Zlomky</h2>
+      <div class="grid">
+        <a class="card" href="light.html">
+          <strong>Lehčí procvičování zlomků</strong>
+          <div class="tag">light.html</div>
+        </a>
+        <a class="card" href="hard.html">
+          <strong>Těžší procvičování zlomků</strong>
+          <div class="tag">hard.html</div>
+        </a>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>% Procenta</h2>
+      <div class="grid">
+        <a class="card" href="procenta-light.html">
+          <strong>Procenta – lehčí slovní úlohy</strong>
+          <div class="tag">procenta-light.html</div>
+        </a>
+        <a class="card" href="procenta-middle.html">
+          <strong>Procenta – střední slovní úlohy</strong>
+          <div class="tag">procenta-middle.html</div>
+        </a>
+      </div>
+    </div>
+
     <footer>© 2025 Berniocal</footer>
   </main>
 </body>
