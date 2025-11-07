@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Procenta – slovní úlohy</title>
+<meta name="theme-color" content="#0b1323" />
+<style>
+  :root{
+    --bg:#0b1323; --panel:#0f1729; --text:#e6eef8; --muted:#9fb0c7; --accent:#60a5fa;
+    --ok:#22c55e; --wrong:#ef4444; --card:#101826;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#0d1528);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .app{max-width:min(900px,96vw);margin:24px auto; padding:16px}
+  header{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:16px}
+  .hearts{position:fixed;top:10px;right:12px;display:flex;gap:6px;z-index:10}
+  .heart{width:20px;height:20px;display:grid;place-items:center;filter:drop-shadow(0 0 6px #f87171)}
+  .heart::before{content:"❤";font-size:18px}
+  .devils{position:fixed;top:36px;right:12px;display:flex;gap:6px;z-index:10}
+  .devil{width:20px;height:20px;display:grid;place-items:center;filter:drop-shadow(0 0 6px #a855f7)}
+  .devil::before{content:"😈";font-size:18px}
+  .panel{background:var(--panel);border:1px solid #1b2946;border-radius:18px;padding:16px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .tag{padding:4px 10px;border:1px solid #233152;border-radius:999px;color:var(--muted);font-size:12px}
+  .big{font-size:20px}
+  .btn{appearance:none;border:1px solid #25324f;background:#15203a;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer}
+  .btn:hover{background:#182444}
+  .btn.primary{border-color:#245bb5;background:#1b3b70}
+  .qcard{background:var(--card);border:1px solid #1a2744;border-radius:16px;padding:14px}
+  .qtitle{color:var(--muted);font-size:13px;margin-bottom:6px}
+  .qtext{font-size:20px; line-height:1.35}
+  .opts{display:grid;gap:10px;margin-top:12px}
+  .opt{border:1px solid #273454;background:#141d34;border-radius:12px;padding:10px 12px;cursor:pointer;text-align:left}
+  .opt:hover{background:#18223c}
+  .opt.correct{outline:2px solid var(--ok)}
+  .opt.wrong{outline:2px solid var(--wrong)}
+  .status{margin-top:8px;font-size:14px;color:var(--muted)}
+  .footer{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+  .sep{height:1px;background:#1b2946;margin:14px 0}
+  *{color:#ffffff!important}
+</style>
+</head>
+<body>
+<div class="hearts" id="hearts"></div>
+<div class="devils" id="devils"></div>
+
+<div class="app">
+  <header>
+    <div class="row">
+      <div class="tag">Kolo: <span id="roundNo">1</span></div>
+      <div class="tag">Otázka v kole: <span id="inRound">1</span>/<span id="perRound">3</span></div>
+      <div class="tag">Bezchybně toto kolo: <span id="streak">0</span>/<span id="perRound2">3</span></div>
+    </div>
+    <div class="row">
+      <button class="btn" id="btnReset">Reset</button>
+      <button class="btn primary" id="btnNext" disabled>Další</button>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="row" style="justify-content:space-between">
+      <div class="big" id="catName">—</div>
+      <div class="tag">Zbývá v kategorii: <span id="leftInCat">—</span></div>
+    </div>
+    <div class="sep"></div>
+
+    <div id="card" class="qcard">
+      <div class="qtitle" id="qTitle">Příklad</div>
+      <div class="qtext" id="qText">—</div>
+      <div class="opts" id="options"></div>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="footer">
+      <button class="btn" id="btnNewRound" disabled>Další kolo</button>
+    </div>
+  </section>
+
+  <p class="status">
+    3 kategorie × 10 úloh (základ / část / počet %). V každém kole 1 úloha z každé kategorie.  
+    Kolo bez chyby přidá ❤, chyba přidá 😈. Úlohy se neopakují.
+  </p>
+</div>
+
+<script>
+/* ---------- Pomocné ---------- */
+const rndInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const choice=a=>a[rndInt(0,a.length-1)];
+const fmt=(x)=>Number.isInteger(x)?String(x):String(Number(x.toFixed(1)));
+const within=(a,b,eps=0.1)=>Math.abs(parseFloat(a)-parseFloat(b))<=eps;
+
+const JM = {
+  kc: "Kč",
+  os: "osob",
+  ks: "ks",
+  pct: "%"
+};
+
+function makeOptionList(correct, unit, deltas){
+  const set=new Set([fmt(correct)]);
+  deltas.forEach(d=>set.add(fmt(correct+d)));
+  // doplnění chybových variant
+  set.add(fmt(correct*1.1)); set.add(fmt(correct*0.9));
+  const arr=[...set].slice(0,4).map(v=>({label:`${v} ${unit}`, value:parseFloat(v)}));
+  // pro jistotu zamíchat; když by bylo méně než 4, doplnit
+  while(arr.length<4){
+    const v = parseFloat(fmt(correct + rndInt(-10,10)));
+    arr.push({label:`${fmt(v)} ${unit}`, value:v});
+  }
+  return arr.sort(()=>Math.random()-0.5);
+}
+
+/* ---------- Generátory slovních úloh ---------- */
+const jmena=["Anna","Bára","Cyril","Daniel","Ema","Filip","Gabriela","Hana","Ivan","Jakub","Klára","Linda","Matěj","Nela","Ondra","Pavla","Radek","Saša","Tereza","Vojta"];
+const zbozi=["kabát","kolo","batoh","telefon","sluchátka","mikrovlnka","sedačka","lyže","monitor","tenisky","hodinky","bunda","zahradní židle","notebook","kniha"];
+const misto=["v obchodě","v e-shopu","na trhu","v knihkupectví","v elektro","v outlettu"];
+
+function UlohaZaklad(){ // hledáme základ
+  const typ=choice(["sleva","DPH","anketa","test","daň","spropitne"]);
+  if(typ==="sleva"){
+    const p = choice([10,12,15,20,25,30,40,50]);
+    const uspora = rndInt(80,800);
+    const zaklad = uspora*100/p;
+    const text = `${choice(jmena)} koupil/a ${choice(zbozi)} ${choice(misto)} se slevou ${p} %. Sleva dělala ${uspora} Kč. Jaká byla původní cena?`;
+    const opts = makeOptionList(zaklad, JM.kc, [20,-20,50]);
+    return {text, correct: zaklad, unit: JM.kc, opts};
+  }
+  if(typ==="DPH"){
+    const p=21;
+    const dph=rndInt(50,600);
+    const bez=dph*100/p;
+    const text=`Na účtence je DPH ${p} % ve výši ${dph} Kč. Jaká byla cena bez DPH?`;
+    const opts=makeOptionList(bez, JM.kc, [10,-10,30]);
+    return {text, correct: bez, unit: JM.kc, opts};
+  }
+  if(typ==="anketa"){
+    const p=choice([12,15,20,25,30,40,60]);
+    const cast=rndInt(12,180);
+    const celkem=cast*100/p;
+    const text=`V anketě odpovědělo „ANO“ ${cast} ${JM.os}, což je ${p} % oslovených. Kolik lidí bylo osloveno celkem?`;
+    const opts=makeOptionList(celkem, JM.os, [5,-5,10]);
+    return {text, correct: celkem, unit: JM.os, opts};
+  }
+  if(typ==="test"){
+    const p=choice([50,60,70,80,90]);
+    const uspes=rndInt(10,60);
+    const celkem=uspes*100/p;
+    const text=`U přijímaček uspělo ${uspes} žáků, což je ${p} % všech. Kolik žáků konalo zkoušku?`;
+    const opts=makeOptionList(celkem, JM.os, [4,-4,8]);
+    return {text, correct: celkem, unit: JM.os, opts};
+  }
+  if(typ==="daň"){
+    const p=choice([15,20,25]);
+    const dan=rndInt(1500,12000);
+    const zaklad=dan*100/p;
+    const text=`Daň ${p} % činila ${dan} Kč. Jak velký byl daňový základ?`;
+    const opts=makeOptionList(zaklad, JM.kc, [50,-50,100]);
+    return {text, correct: zaklad, unit: JM.kc, opts};
+  }
+  // spropitné známé, hledáme účet
+  const p=choice([5,10,12,15]);
+  const sprop=rndInt(10,120);
+  const ucet=sprop*100/p;
+  const text=`${choice(jmena)} nechal/a v restauraci spropitné ${sprop} Kč, což je ${p} % z účtu. Kolik činil účet?`;
+  const opts=makeOptionList(ucet, JM.kc, [20,-20,40]);
+  return {text, correct: ucet, unit: JM.kc, opts};
+}
+
+function UlohaCast(){ // hledáme procentovou část
+  const typ=choice(["sleva","DPH","spropitne","bonus","hlasovani","platy"]);
+  if(typ==="sleva"){
+    const cena=rndInt(300,3000);
+    const p=choice([10,12,15,20,25,30,40]);
+    const sleva=cena*p/100;
+    const text=`${choice(jmena)} kupuje ${choice(zbozi)} za ${cena} Kč. Jak velká je sleva ${p} % v korunách?`;
+    const opts=makeOptionList(sleva, JM.kc, [10,-10,30]);
+    return {text, correct: sleva, unit: JM.kc, opts};
+  }
+  if(typ==="DPH"){
+    const bez=rndInt(200,4000);
+    const p=21;
+    const dph=bez*p/100;
+    const text=`Cena bez DPH je ${bez} Kč. Kolik korun činí DPH ${p} %?`;
+    const opts=makeOptionList(dph, JM.kc, [10,-10,25]);
+    return {text, correct: dph, unit: JM.kc, opts};
+  }
+  if(typ==="spropitne"){
+    const ucet=rndInt(200,1500);
+    const p=choice([5,10,12,15]);
+    const tip=ucet*p/100;
+    const text=`Účet v restauraci je ${ucet} Kč. Kolik je spropitné ${p} %?`;
+    const opts=makeOptionList(tip, JM.kc, [5,-5,10]);
+    return {text, correct: tip, unit: JM.kc, opts};
+  }
+  if(typ==="bonus"){
+    const mzda=rndInt(18000,42000);
+    const p=choice([5,8,10,12,15,20]);
+    const bonus=mzda*p/100;
+    const text=`Zaměstnanec dostal prémie ${p} % ze mzdy ${mzda} Kč. Kolik korun to je?`;
+    const opts=makeOptionList(bonus, JM.kc, [50,-50,100]);
+    return {text, correct: bonus, unit: JM.kc, opts};
+  }
+  if(typ==="hlasovani"){
+    const celkem=rndInt(120,800);
+    const p=choice([35,40,45,55,60,65]);
+    const hlasy=celkem*p/100;
+    const text=`Ve volbě hlasovalo pro návrh ${p} % z ${celkem} voličů. Kolik hlasů dostal návrh?`;
+    const opts=makeOptionList(hlasy, JM.os, [4,-4,8]);
+    return {text, correct: hlasy, unit: JM.os, opts};
+  }
+  // platy/úspory
+  const usp=rndInt(5000,30000);
+  const p=choice([2,3,4,5,8,10]);
+  const navys=usp*p/100;
+  const text=`Úspory jsou ${usp} Kč. O kolik korun vzrostou při zhodnocení ${p} %? (jen nárůst)`;
+  const opts=makeOptionList(navys, JM.kc, [20,-20,40]);
+  return {text, correct: navys, unit: JM.kc, opts};
+}
+
+function UlohaPocetProcent(){ // hledáme procenta
+  const typ=choice(["kolikProcent","sleva","plneni","test","sklad","DPH-podil"]);
+  if(typ==="kolikProcent"){
+    const cel=rndInt(120,900);
+    const cast=rndInt(Math.max(12,Math.floor(cel*0.1)), Math.floor(cel*0.9));
+    const p=100*cast/cel;
+    const text=`Kolik procent je ${cast} z ${cel}?`;
+    const opts=makeOptionList(p, JM.pct, [2,-2,5]);
+    return {text, correct: p, unit: JM.pct, opts};
+  }
+  if(typ==="sleva"){
+    const puv=rndInt(400,4000);
+    const nova=rndInt(Math.floor(puv*0.6), Math.floor(puv*0.95));
+    const p=100*(puv-nova)/puv;
+    const text=`Zboží zlevnilo z ${puv} Kč na ${nova} Kč. Jak velká byla sleva v procentech?`;
+    const opts=makeOptionList(p, JM.pct, [2,-2,4]);
+    return {text, correct: p, unit: JM.pct, opts};
+  }
+  if(typ==="plneni"){
+    const plan=rndInt(200,2000);
+    const skut=rndInt(Math.floor(plan*0.7), Math.floor(plan*1.2));
+    const p=100*skut/plan;
+    const text=`Podnik plánoval vyrobit ${plan} ${JM.ks}, skutečně vyrobil ${skut} ${JM.ks}. Na kolik procent splnil plán?`;
+    const opts=makeOptionList(p, JM.pct, [3,-3,6]);
+    return {text, correct: p, unit: JM.pct, opts};
+  }
+  if(typ==="test"){
+    const max=rndInt(40,100);
+    const body=rndInt(Math.floor(max*0.3), Math.floor(max*0.98));
+    const p=100*body/max;
+    const text=`Žák získal ${body} bodů z ${max}. Kolik je to procent?`;
+    const opts=makeOptionList(p, JM.pct, [2,-2,5]);
+    return {text, correct: p, unit: JM.pct, opts};
+  }
+  if(typ==="sklad"){
+    const cel=rndInt(500,3000);
+    const prod=rndInt(Math.floor(cel*0.1), Math.floor(cel*0.6));
+    const p=100*prod/cel;
+    const text=`Ze skladu se prodalo ${prod} kusů z celkových ${cel}. Jaké je to procento zásob?`;
+    const opts=makeOptionList(p, JM.pct, [2,-2,4]);
+    return {text, correct: p, unit: JM.pct, opts};
+  }
+  // DPH podíl na ceně s daní
+  const sdan=rndInt(300,3000);
+  const p=21;
+  const bez = sdan / (1+p/100);
+  const dph = sdan - bez;
+  const podil = 100*dph/sdan;
+  const text=`Cena s DPH je ${sdan} Kč (sazba DPH ${p} %). Kolik procent z ceny s daní tvoří DPH?`;
+  const opts=makeOptionList(podil, JM.pct, [1.5,-1.5,3]);
+  return {text, correct: podil, unit: JM.pct, opts};
+}
+
+/* ---------- Sestavení 3×10 úloh ---------- */
+function buildCategory(gen, n){const arr=[];for(let i=0;i<n;i++)arr.push(gen());return arr;}
+
+const CATS = [
+  {name:"1) Hledáme základ (př.: sleva/DPH/anketa…)", items: buildCategory(UlohaZaklad,10)},
+  {name:"2) Hledáme procentovou část (koruny/osoby…)", items: buildCategory(UlohaCast,10)},
+  {name:"3) Hledáme počet procent (podíl, sleva, plnění…)", items: buildCategory(UlohaPocetProcent,10)}
+];
+
+/* ---------- Stav a UI ---------- */
+let round=1,inRound=0,roundCorrect=0;
+const used=CATS.map(()=>new Set());
+let current=null;
+
+const elCatName=document.getElementById('catName');
+const elLeftInCat=document.getElementById('leftInCat');
+const elQTitle=document.getElementById('qTitle');
+const elQText=document.getElementById('qText');
+const elOptions=document.getElementById('options');
+const elStatus=document.getElementById('status');
+const elRoundNo=document.getElementById('roundNo');
+const elInRound=document.getElementById('inRound');
+const elStreak=document.getElementById('streak');
+const elPerRound=document.getElementById('perRound');
+const elPerRound2=document.getElementById('perRound2');
+const elBtnNext=document.getElementById('btnNext');
+const elBtnNewRound=document.getElementById('btnNewRound');
+const elBtnReset=document.getElementById('btnReset');
+const elHearts=document.getElementById('hearts');
+const elDevils=document.getElementById('devils');
+
+const QUESTIONS_PER_ROUND=CATS.length;
+elPerRound.textContent=QUESTIONS_PER_ROUND;
+elPerRound2.textContent=QUESTIONS_PER_ROUND;
+
+function pickFromCategory(catIdx){
+  const cat=CATS[catIdx];
+  const available=[];
+  for(let i=0;i<cat.items.length;i++) if(!used[catIdx].has(i)) available.push(i);
+  if(available.length===0) return null;
+  const qIndex=available[Math.floor(Math.random()*available.length)];
+  return {catIdx,qIndex};
+}
+
+function startNextQuestion(){
+  elStatus.textContent=''; elOptions.innerHTML=''; elBtnNext.disabled=true;
+
+  if(inRound>=QUESTIONS_PER_ROUND){
+    if(roundCorrect===QUESTIONS_PER_ROUND){
+      const heart=document.createElement('div'); heart.className='heart'; elHearts.appendChild(heart);
+      elStatus.innerHTML=`Kolo ${round} hotovo <strong>bez chyby</strong>! ❤`;
+    }else{
+      elStatus.innerHTML=`Kolo ${round} hotovo. Správně ${roundCorrect}/${QUESTIONS_PER_ROUND}.`;
+    }
+    elBtnNewRound.disabled=false; return;
+  }
+
+  const catIdx=inRound;
+  const picked=pickFromCategory(catIdx);
+  if(!picked){
+    elCatName.textContent=CATS[catIdx].name;
+    elLeftInCat.textContent='0';
+    elQTitle.textContent='V této kategorii došly nové úlohy.';
+    elQText.textContent='Zkus další kolo, nebo Reset.';
+    elBtnNewRound.disabled=false; return;
+  }
+
+  const cat=CATS[catIdx];
+  const q=cat.items[picked.qIndex];
+  used[catIdx].add(picked.qIndex);
+  current={catIndex:catIdx,qIndex:picked.qIndex,correct:q.correct,unit:q.unit};
+
+  elCatName.textContent=cat.name;
+  elLeftInCat.textContent=String(cat.items.length - used[catIdx].size);
+  elQTitle.textContent=`Úloha #${picked.qIndex+1}`;
+  elQText.textContent=q.text;
+
+  q.opts.forEach((opt)=>{
+    const b=document.createElement('button');
+    b.className='opt';
+    b.textContent=opt.label;
+    b.addEventListener('click',()=>{
+      if(b.dataset.locked==='1') return;
+      [...elOptions.children].forEach(x=>x.dataset.locked='1');
+
+      const clickedVal=parseFloat(opt.value);
+      const corrVal=parseFloat(current.correct);
+
+      if(within(clickedVal,corrVal,0.1)){
+        b.classList.add('correct'); elStatus.textContent='Správně!'; roundCorrect++;
+      }else{
+        b.classList.add('wrong'); elStatus.textContent='Špatně.';
+        [...elOptions.children].forEach(x=>{
+          const v=parseFloat(x.textContent);
+          if(within(v,corrVal,0.1)) x.classList.add('correct');
+        });
+        const devil=document.createElement('div'); devil.className='devil'; elDevils.appendChild(devil);
+      }
+      elBtnNext.disabled=false;
+    });
+    elOptions.appendChild(b);
+  });
+
+  inRound++; elInRound.textContent=String(inRound); elStreak.textContent=String(roundCorrect);
+}
+
+function newRound(){ round++; inRound=0; roundCorrect=0; elRoundNo.textContent=String(round); elInRound.textContent='0'; elStreak.textContent='0'; elBtnNewRound.disabled=true; startNextQuestion(); }
+function resetAll(){ round=1; inRound=0; roundCorrect=0; used.forEach(s=>s.clear()); elHearts.innerHTML=''; elDevils.innerHTML=''; elRoundNo.textContent='1'; elInRound.textContent='0'; elStreak.textContent='0'; elBtnNewRound.disabled=true; startNextQuestion(); }
+
+elBtnNext.addEventListener('click', startNextQuestion);
+elBtnNewRound.addEventListener('click', newRound);
+elBtnReset.addEventListener('click', resetAll);
+
+startNextQuestion();
+</script>
+</body>
+</html>
