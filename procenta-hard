@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Procenta dvakrát – slovní úlohy</title>
+<meta name="theme-color" content="#0b1323" />
+<style>
+  :root{
+    --bg:#0b1323; --panel:#0f1729; --text:#e6eef8; --muted:#9fb0c7; --accent:#60a5fa;
+    --ok:#22c55e; --wrong:#ef4444; --card:#101826;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#0d1528);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .app{max-width:min(900px,96vw);margin:24px auto; padding:16px}
+  header{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:16px}
+  .hearts{position:fixed;top:10px;right:12px;display:flex;gap:6px;z-index:10}
+  .heart{width:20px;height:20px;display:grid;place-items:center;filter:drop-shadow(0 0 6px #f87171)}
+  .heart::before{content:"❤";font-size:18px}
+  .devils{position:fixed;top:36px;right:12px;display:flex;gap:6px;z-index:10}
+  .devil{width:20px;height:20px;display:grid;place-items:center;filter:drop-shadow(0 0 6px #a855f7)}
+  .devil::before{content:"😈";font-size:18px}
+  .panel{background:var(--panel);border:1px solid #1b2946;border-radius:18px;padding:16px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .tag{padding:4px 10px;border:1px solid #233152;border-radius:999px;color:var(--muted);font-size:12px}
+  .big{font-size:20px}
+  .btn{appearance:none;border:1px solid #25324f;background:#15203a;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer}
+  .btn:hover{background:#182444}
+  .btn.primary{border-color:#245bb5;background:#1b3b70}
+  .qcard{background:var(--card);border:1px solid #1a2744;border-radius:16px;padding:14px}
+  .qtitle{color:var(--muted);font-size:13px;margin-bottom:6px}
+  .qtext{font-size:20px; line-height:1.35}
+  .opts{display:grid;gap:10px;margin-top:12px}
+  .opt{border:1px solid #273454;background:#141d34;border-radius:12px;padding:10px 12px;cursor:pointer;text-align:left}
+  .opt:hover{background:#18223c}
+  .opt.correct{outline:2px solid var(--ok)}
+  .opt.wrong{outline:2px solid var(--wrong)}
+  .status{margin-top:8px;font-size:14px;color:var(--muted)}
+  .footer{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+  .sep{height:1px;background:#1b2946;margin:14px 0}
+  *{color:#ffffff!important}
+</style>
+</head>
+<body>
+<div class="hearts" id="hearts"></div>
+<div class="devils" id="devils"></div>
+
+<div class="app">
+  <header>
+    <div class="row">
+      <div class="tag">Kolo: <span id="roundNo">1</span></div>
+      <div class="tag">Otázka v kole: <span id="inRound">1</span>/<span id="perRound">4</span></div>
+      <div class="tag">Bezchybně toto kolo: <span id="streak">0</span>/<span id="perRound2">4</span></div>
+    </div>
+    <div class="row">
+      <button class="btn" id="btnReset">Reset</button>
+      <button class="btn primary" id="btnNext" disabled>Další</button>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="row" style="justify-content:space-between">
+      <div class="big" id="catName">—</div>
+      <div class="tag">Zbývá v kategorii: <span id="leftInCat">—</span></div>
+    </div>
+    <div class="sep"></div>
+
+    <div id="card" class="qcard">
+      <div class="qtitle" id="qTitle">Příklad</div>
+      <div class="qtext" id="qText">—</div>
+      <div class="opts" id="options"></div>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="footer">
+      <button class="btn" id="btnNewRound" disabled>Další kolo</button>
+    </div>
+  </section>
+
+  <p class="status">
+    „Procenta dvakrát“: 4 kategorie × 10 úloh. Druhý krok se vždy počítá z <strong>nového základu</strong>.
+  </p>
+</div>
+
+<script>
+/* ---------- Pomocné ---------- */
+const rndInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const choice=a=>a[rndInt(0,a.length-1)];
+const round2=(x)=>Math.round(x*100)/100;
+const kc=(x)=>Math.round(x); // ceny na celé Kč
+const obj= (text,correct,opts)=>({text,correct,opts});
+const JM_KC="Kč";
+
+const jmena=["Anna","Bára","Cyril","Daniel","Ema","Filip","Gabriela","Hana","Ivan","Jakub","Klára","Linda","Matěj","Nela","Ondra","Pavla","Radek","Saša","Tereza","Vojta"];
+const zbozi=["kabát","kolo","batoh","telefon","sluchátka","mikrovlnka","sedačka","lyže","monitor","tenisky","hodinky","bunda","kniha","notebook","brýle"];
+const shop=["v obchodě","v e-shopu","v outlettu","na trhu","v elektro","v knihkupectví"];
+
+function optionsForDouble(base, p1, p2, mode){ 
+  // mode: 'down','up' ; for second step sign separately
+  // correct
+  let m1 = mode[0]==='d' ? (1-p1/100) : (1+p1/100);
+  let m2 = mode[1]==='d' ? (1-p2/100) : (1+p2/100);
+  const correct = kc(base*m1*m2);
+  // typická chyba: sečtu procenta a použiju jednou
+  const addOnce = kc(base * (1 + ((mode[0]==='d'?-p1:p1) + (mode[1]==='d'?-p2:p2))/100 ));
+  // další chyba: druhý krok pořád z původní ceny
+  const wrongBaseSecond = kc( (mode[1]==='d' ? base*(1-p2/100) : base*(1+p2/100)) * (mode[0]==='d' ? (1-p1/100) : (1+p1/100)) );
+  // drobně zaokrouhlený
+  const near = correct + choice([-50,-20,20,50]);
+  const all=[correct, addOnce, wrongBaseSecond, near];
+  // unikátní a zamíchat
+  const uniq=[...new Set(all)];
+  while(uniq.length<4) uniq.push(correct + rndInt(-80,80));
+  return uniq.sort(()=>Math.random()-0.5).map(v=>({label:`${v} ${JM_KC}`, value:v}));
+}
+
+/* ---------- Generátory úloh ---------- */
+function textTemplate(base, p1, p2, firstWord, secondWord){
+  const j=choice(jmena), z=choice(zbozi), s=choice(shop);
+  return `${j} koupil/a ${z} ${s} za ${base} Kč. Nejprve se cena ${firstWord} o ${p1} %. 
+Poté se výsledek ${secondWord} o ${p2} %. 
+<strong>Druhý krok počítej z nové ceny</strong>. Jaká je konečná cena?`;
+}
+
+// 1) Sleva → sleva
+function genDownDown(){
+  const base=rndInt(600,6000);
+  const p1=choice([10,12,15,20,25,30]);
+  const p2=choice([5,8,10,12,15,20]);
+  const text=textTemplate(base,p1,p2,"zlevní","zlevní");
+  const opts=optionsForDouble(base,p1,p2,"dd");
+  const correct=opts.find(o=>o.value===Math.min(...opts.map(x=>Math.abs(x.value - Math.round(base*(1-p1/100)*(1-p2/100)))))).value;
+  return obj(text, correct, opts);
+}
+
+// 2) Sleva → zdražení
+function genDownUp(){
+  const base=rndInt(600,6000);
+  const p1=choice([10,12,15,20,25,30]);
+  const p2=choice([5,8,10,12,15,20]);
+  const text=textTemplate(base,p1,p2,"zlevní","zdraží");
+  const opts=optionsForDouble(base,p1,p2,"du");
+  const correct = Math.round(base*(1-p1/100)*(1+p2/100));
+  // přepiš správnou, kdyby se v options netrefila přesně
+  const mapped = opts.map(o=> ({...o, isCorr: o.value===correct}));
+  if(!mapped.some(o=>o.isCorr)){
+    opts[0]={label:`${correct} ${JM_KC}`, value:correct};
+  }
+  return obj(text, correct, opts.sort(()=>Math.random()-0.5));
+}
+
+// 3) Zdražení → zdražení
+function genUpUp(){
+  const base=rndInt(600,6000);
+  const p1=choice([5,8,10,12,15,20]);
+  const p2=choice([5,8,10,12,15,20]);
+  const text=textTemplate(base,p1,p2,"zdraží","zdraží");
+  const opts=optionsForDouble(base,p1,p2,"uu");
+  const correct = Math.round(base*(1+p1/100)*(1+p2/100));
+  if(!opts.some(o=>o.value===correct)) opts[0]={label:`${correct} ${JM_KC}`, value:correct};
+  return obj(text, correct, opts.sort(()=>Math.random()-0.5));
+}
+
+// 4) Zdražení → sleva
+function genUpDown(){
+  const base=rndInt(600,6000);
+  const p1=choice([5,8,10,12,15,20]);
+  const p2=choice([5,8,10,12,15,20]);
+  const text=textTemplate(base,p1,p2,"zdraží","zlevní");
+  const opts=optionsForDouble(base,p1,p2,"ud");
+  const correct = Math.round(base*(1+p1/100)*(1-p2/100));
+  if(!opts.some(o=>o.value===correct)) opts[0]={label:`${correct} ${JM_KC}`, value:correct};
+  return obj(text, correct, opts.sort(()=>Math.random()-0.5));
+}
+
+/* ---------- Sestavení 4×10 úloh ---------- */
+function build(gen,n){const arr=[];for(let i=0;i<n;i++)arr.push(gen());return arr;}
+
+const CATS=[
+  {name:"1) Sleva → sleva (druhý krok z nové ceny)", items: build(genDownDown,10)},
+  {name:"2) Sleva → zdražení (druhý krok z nové ceny)", items: build(genDownUp,10)},
+  {name:"3) Zdražení → zdražení (druhý krok z nové ceny)", items: build(genUpUp,10)},
+  {name:"4) Zdražení → sleva (druhý krok z nové ceny)", items: build(genUpDown,10)},
+];
+
+/* ---------- Stav a UI ---------- */
+let round=1,inRound=0,roundCorrect=0;
+const used=CATS.map(()=>new Set());
+let current=null;
+
+const elCatName=document.getElementById('catName');
+const elLeftInCat=document.getElementById('leftInCat');
+const elQTitle=document.getElementById('qTitle');
+const elQText=document.getElementById('qText');
+const elOptions=document.getElementById('options');
+const elStatus=document.getElementById('status');
+const elRoundNo=document.getElementById('roundNo');
+const elInRound=document.getElementById('inRound');
+const elStreak=document.getElementById('streak');
+const elPerRound=document.getElementById('perRound');
+const elPerRound2=document.getElementById('perRound2');
+const elBtnNext=document.getElementById('btnNext');
+const elBtnNewRound=document.getElementById('btnNewRound');
+const elBtnReset=document.getElementById('btnReset');
+const elHearts=document.getElementById('hearts');
+const elDevils=document.getElementById('devils');
+
+const QUESTIONS_PER_ROUND=CATS.length;
+elPerRound.textContent=QUESTIONS_PER_ROUND;
+elPerRound2.textContent=QUESTIONS_PER_ROUND;
+
+function pickFromCategory(catIdx){
+  const cat=CATS[catIdx];
+  const available=[];
+  for(let i=0;i<cat.items.length;i++) if(!used[catIdx].has(i)) available.push(i);
+  if(available.length===0) return null;
+  const qIndex=available[Math.floor(Math.random()*available.length)];
+  return {catIdx,qIndex};
+}
+
+function startNextQuestion(){
+  elStatus.textContent=''; elOptions.innerHTML=''; elBtnNext.disabled=true;
+
+  if(inRound>=QUESTIONS_PER_ROUND){
+    if(roundCorrect===QUESTIONS_PER_ROUND){
+      const heart=document.createElement('div'); heart.className='heart'; elHearts.appendChild(heart);
+      elStatus.innerHTML=`Kolo ${round} hotovo <strong>bez chyby</strong>! ❤`;
+    }else{
+      elStatus.innerHTML=`Kolo ${round} hotovo. Správně ${roundCorrect}/${QUESTIONS_PER_ROUND}.`;
+    }
+    elBtnNewRound.disabled=false; return;
+  }
+
+  const catIdx=inRound;
+  const picked=pickFromCategory(catIdx);
+  if(!picked){
+    elCatName.textContent=CATS[catIdx].name;
+    elLeftInCat.textContent='0';
+    elQTitle.textContent='V této kategorii došly nové úlohy.';
+    elQText.textContent='Zkus další kolo, nebo Reset.';
+    elBtnNewRound.disabled=false; return;
+  }
+
+  const cat=CATS[catIdx];
+  const q=cat.items[picked.qIndex];
+  used[catIdx].add(picked.qIndex);
+  current={catIndex:catIdx,qIndex:picked.qIndex,correct:q.correct};
+
+  elCatName.textContent=cat.name;
+  elLeftInCat.textContent=String(cat.items.length - used[catIdx].size);
+  elQTitle.textContent=`Úloha #${picked.qIndex+1}`;
+  elQText.innerHTML=q.text;
+
+  q.opts.forEach((opt)=>{
+    const b=document.createElement('button');
+    b.className='opt';
+    b.textContent=opt.label;
+    b.addEventListener('click',()=>{
+      if(b.dataset.locked==='1') return;
+      [...elOptions.children].forEach(x=>x.dataset.locked='1');
+
+      if(Number(opt.value)===Number(current.correct)){
+        b.classList.add('correct'); elStatus.textContent='Správně!'; roundCorrect++;
+      }else{
+        b.classList.add('wrong'); elStatus.textContent='Špatně.';
+        [...elOptions.children].forEach(x=>{
+          const v=parseFloat(x.textContent);
+          if(v===Number(current.correct)) x.classList.add('correct');
+        });
+        const devil=document.createElement('div'); devil.className='devil'; elDevils.appendChild(devil);
+      }
+      elBtnNext.disabled=false;
+    });
+    elOptions.appendChild(b);
+  });
+
+  inRound++; elInRound.textContent=String(inRound); elStreak.textContent=String(roundCorrect);
+}
+
+function newRound(){ round++; inRound=0; roundCorrect=0; elRoundNo.textContent=String(round); elInRound.textContent='0'; elStreak.textContent='0'; elBtnNewRound.disabled=true; startNextQuestion(); }
+function resetAll(){ round=1; inRound=0; roundCorrect=0; used.forEach(s=>s.clear()); elHearts.innerHTML=''; elDevils.innerHTML=''; elRoundNo.textContent='1'; elInRound.textContent='0'; elStreak.textContent='0'; elBtnNewRound.disabled=true; startNextQuestion(); }
+
+elBtnNext.addEventListener('click', startNextQuestion);
+elBtnNewRound.addEventListener('click', newRound);
+elBtnReset.addEventListener('click', resetAll);
+
+startNextQuestion();
+</script>
+</body>
+</html>
