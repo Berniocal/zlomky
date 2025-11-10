@@ -90,6 +90,21 @@ const choice=a=>a[rndInt(0,a.length-1)];
 const fmt=(x)=>Number.isInteger(x)?String(x):String(Number(x.toFixed(1)));
 const within=(a,b,eps=0.1)=>Math.abs(parseFloat(a)-parseFloat(b))<=eps;
 
+/* Matematika pro „hezké“ výsledky */
+const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a);
+const lcm=(a,b)=>Math.abs(a*b)/gcd(a,b);
+const randMultiple=(min,max,m)=> {
+  const start = Math.ceil(min/m)*m;
+  const end   = Math.floor(max/m)*m;
+  if (start> end) return start; // fallback
+  const k=(end-start)/m;
+  return start + m*rndInt(0, Math.max(0,k));
+};
+// Nutný násobek pro to, aby X * p / 100 byl celočíselný:
+const multForPercent=(p)=> 100 / gcd(100,p);
+// A naopak, aby (X * 100) / p byl celočíselný (typ „hledáme základ“):
+const multForInversePercent=(p)=> p / gcd(p,100);
+
 const JM = {
   kc: "Kč",
   os: "osob",
@@ -103,7 +118,7 @@ function makeOptionList(correct, unit, deltas){
   // doplnění chybových variant
   set.add(fmt(correct*1.1)); set.add(fmt(correct*0.9));
   const arr=[...set].slice(0,4).map(v=>({label:`${v} ${unit}`, value:parseFloat(v)}));
-  // pro jistotu zamíchat; když by bylo méně než 4, doplnit
+  // doplnit na 4, kdyby bylo méně
   while(arr.length<4){
     const v = parseFloat(fmt(correct + rndInt(-10,10)));
     arr.push({label:`${fmt(v)} ${unit}`, value:v});
@@ -111,57 +126,71 @@ function makeOptionList(correct, unit, deltas){
   return arr.sort(()=>Math.random()-0.5);
 }
 
-/* ---------- Generátory slovních úloh ---------- */
+/* ---------- Generátory slovních úloh (upravené pro celé osoby/ks a celé Kč) ---------- */
 const jmena=["Anna","Bára","Cyril","Daniel","Ema","Filip","Gabriela","Hana","Ivan","Jakub","Klára","Linda","Matěj","Nela","Ondra","Pavla","Radek","Saša","Tereza","Vojta"];
 const zbozi=["kabát","kolo","batoh","telefon","sluchátka","mikrovlnka","sedačka","lyže","monitor","tenisky","hodinky","bunda","zahradní židle","notebook","kniha"];
 const misto=["v obchodě","v e-shopu","na trhu","v knihkupectví","v elektro","v outlettu"];
 
 function UlohaZaklad(){ // hledáme základ
   const typ=choice(["sleva","DPH","anketa","test","daň","spropitne"]);
+
   if(typ==="sleva"){
-    const p = choice([10,12,15,20,25,30,40,50]);
-    const uspora = rndInt(80,800);
-    const zaklad = uspora*100/p;
+    const p = choice([10,12,15,20,25,30,40,50]); // zachováno
+    // Uspora musí být násobkem multForInversePercent(p), aby (uspora*100)/p bylo celé Kč
+    const mult = multForInversePercent(p);
+    const uspora = randMultiple(80,800,mult);
+    const zaklad = (uspora*100)/p;
     const text = `${choice(jmena)} koupil/a ${choice(zbozi)} ${choice(misto)} se slevou ${p} %. Sleva dělala ${uspora} Kč. Jaká byla původní cena?`;
     const opts = makeOptionList(zaklad, JM.kc, [20,-20,50]);
     return {text, correct: zaklad, unit: JM.kc, opts};
   }
+
   if(typ==="DPH"){
     const p=21;
-    const dph=rndInt(50,600);
-    const bez=dph*100/p;
+    // DPH zvolíme jako násobek 21, aby (dph*100)/21 bylo celé Kč
+    const dph = randMultiple(50,600,21);
+    const bez = (dph*100)/p;
     const text=`Na účtence je DPH ${p} % ve výši ${dph} Kč. Jaká byla cena bez DPH?`;
     const opts=makeOptionList(bez, JM.kc, [10,-10,30]);
     return {text, correct: bez, unit: JM.kc, opts};
   }
+
   if(typ==="anketa"){
-    const p=choice([12,15,20,25,30,40,60]);
-    const cast=rndInt(12,180);
-    const celkem=cast*100/p;
+    // vezmeme p, které dělí 100, pak celkem = cast*100/p bude celé pro libovolný cast
+    const p=choice([4,5,10,20,25,50]);
+    const cast= rndInt(12,180);
+    const celkem = (cast*100)/p;
     const text=`V anketě odpovědělo „ANO“ ${cast} ${JM.os}, což je ${p} % oslovených. Kolik lidí bylo osloveno celkem?`;
     const opts=makeOptionList(celkem, JM.os, [5,-5,10]);
     return {text, correct: celkem, unit: JM.os, opts};
   }
+
   if(typ==="test"){
     const p=choice([50,60,70,80,90]);
-    const uspes=rndInt(10,60);
-    const celkem=uspes*100/p;
+    // uspes musí být násobkem multForInversePercent(p), aby (uspes*100)/p bylo celé
+    const mult = multForInversePercent(p);
+    const uspes = randMultiple(10,60,mult);
+    const celkem=(uspes*100)/p;
     const text=`U přijímaček uspělo ${uspes} žáků, což je ${p} % všech. Kolik žáků konalo zkoušku?`;
     const opts=makeOptionList(celkem, JM.os, [4,-4,8]);
     return {text, correct: celkem, unit: JM.os, opts};
   }
+
   if(typ==="daň"){
     const p=choice([15,20,25]);
-    const dan=rndInt(1500,12000);
-    const zaklad=dan*100/p;
+    // daň jako násobek p, aby (dan*100)/p bylo celé Kč
+    const dan=randMultiple(1500,12000,p);
+    const zaklad=(dan*100)/p;
     const text=`Daň ${p} % činila ${dan} Kč. Jak velký byl daňový základ?`;
     const opts=makeOptionList(zaklad, JM.kc, [50,-50,100]);
     return {text, correct: zaklad, unit: JM.kc, opts};
   }
-  // spropitné známé, hledáme účet
+
+  // spropitné známé, hledáme účet (chceme celé Kč)
   const p=choice([5,10,12,15]);
-  const sprop=rndInt(10,120);
-  const ucet=sprop*100/p;
+  // sprop musí být násobek multForInversePercent(p), aby (sprop*100)/p bylo celé Kč
+  const sprop=randMultiple(10,120, multForInversePercent(p));
+  const ucet=(sprop*100)/p;
   const text=`${choice(jmena)} nechal/a v restauraci spropitné ${sprop} Kč, což je ${p} % z účtu. Kolik činil účet?`;
   const opts=makeOptionList(ucet, JM.kc, [20,-20,40]);
   return {text, correct: ucet, unit: JM.kc, opts};
@@ -170,55 +199,58 @@ function UlohaZaklad(){ // hledáme základ
 function UlohaCast(){ // hledáme procentovou část
   const typ=choice(["sleva","DPH","spropitne","bonus","hlasovani","platy"]);
   if(typ==="sleva"){
-    const cena=rndInt(300,3000);
     const p=choice([10,12,15,20,25,30,40]);
+    // aby sleva byla celé Kč: cena násobkem multForPercent(p)
+    const cena=randMultiple(300,3000, multForPercent(p));
     const sleva=cena*p/100;
     const text=`${choice(jmena)} kupuje ${choice(zbozi)} za ${cena} Kč. Jak velká je sleva ${p} % v korunách?`;
     const opts=makeOptionList(sleva, JM.kc, [10,-10,30]);
     return {text, correct: sleva, unit: JM.kc, opts};
   }
   if(typ==="DPH"){
-    const bez=rndInt(200,4000);
     const p=21;
+    // aby DPH bylo v celých Kč: základ násobkem 100
+    const bez=randMultiple(200,4000, 100);
     const dph=bez*p/100;
     const text=`Cena bez DPH je ${bez} Kč. Kolik korun činí DPH ${p} %?`;
     const opts=makeOptionList(dph, JM.kc, [10,-10,25]);
     return {text, correct: dph, unit: JM.kc, opts};
   }
   if(typ==="spropitne"){
-    const ucet=rndInt(200,1500);
     const p=choice([5,10,12,15]);
+    const ucet=randMultiple(200,1500, multForPercent(p)); // tip celá Kč
     const tip=ucet*p/100;
     const text=`Účet v restauraci je ${ucet} Kč. Kolik je spropitné ${p} %?`;
     const opts=makeOptionList(tip, JM.kc, [5,-5,10]);
     return {text, correct: tip, unit: JM.kc, opts};
   }
   if(typ==="bonus"){
-    const mzda=rndInt(18000,42000);
     const p=choice([5,8,10,12,15,20]);
+    const mzda=randMultiple(18000,42000, multForPercent(p)); // prémie celé Kč
     const bonus=mzda*p/100;
     const text=`Zaměstnanec dostal prémie ${p} % ze mzdy ${mzda} Kč. Kolik korun to je?`;
     const opts=makeOptionList(bonus, JM.kc, [50,-50,100]);
     return {text, correct: bonus, unit: JM.kc, opts};
   }
   if(typ==="hlasovani"){
-    const celkem=rndInt(120,800);
-    const p=choice([35,40,45,55,60,65]);
-    const hlasy=celkem*p/100;
+    const p=choice([5,10,20,25,50,75]); // 75 % povolíme, ale ošetříme celkem
+    const mult = multForPercent(p);      // celkem musí být násobkem mult
+    const celkem=randMultiple(120,800, mult);
+    const hlasy=celkem*p/100;            // celé osoby
     const text=`Ve volbě hlasovalo pro návrh ${p} % z ${celkem} voličů. Kolik hlasů dostal návrh?`;
     const opts=makeOptionList(hlasy, JM.os, [4,-4,8]);
     return {text, correct: hlasy, unit: JM.os, opts};
   }
-  // platy/úspory
-  const usp=rndInt(5000,30000);
+  // platy/úspory – celé Kč
   const p=choice([2,3,4,5,8,10]);
+  const usp=randMultiple(5000,30000, multForPercent(p));
   const navys=usp*p/100;
   const text=`Úspory jsou ${usp} Kč. O kolik korun vzrostou při zhodnocení ${p} %? (jen nárůst)`;
   const opts=makeOptionList(navys, JM.kc, [20,-20,40]);
   return {text, correct: navys, unit: JM.kc, opts};
 }
 
-function UlohaPocetProcent(){ // hledáme procenta
+function UlohaPocetProcent(){ // hledáme procenta (procenta mohou být i desetinná – to je OK)
   const typ=choice(["kolikProcent","sleva","plneni","test","sklad","DPH-podil"]);
   if(typ==="kolikProcent"){
     const cel=rndInt(120,900);
@@ -238,6 +270,7 @@ function UlohaPocetProcent(){ // hledáme procenta
   }
   if(typ==="plneni"){
     const plan=rndInt(200,2000);
+    // skutečnost násobkem 5, aby občas vycházela „hezčí“ procenta, ale není nutné
     const skut=rndInt(Math.floor(plan*0.7), Math.floor(plan*1.2));
     const p=100*skut/plan;
     const text=`Podnik plánoval vyrobit ${plan} ${JM.ks}, skutečně vyrobil ${skut} ${JM.ks}. Na kolik procent splnil plán?`;
@@ -260,7 +293,7 @@ function UlohaPocetProcent(){ // hledáme procenta
     const opts=makeOptionList(p, JM.pct, [2,-2,4]);
     return {text, correct: p, unit: JM.pct, opts};
   }
-  // DPH podíl na ceně s daní
+  // DPH podíl na ceně s daní (21/121 ≈ 17,36 % – v pořádku i s desetinnou hodnotou)
   const sdan=rndInt(300,3000);
   const p=21;
   const bez = sdan / (1+p/100);
