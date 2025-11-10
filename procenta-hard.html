@@ -122,16 +122,24 @@ Poté se výsledek ${secondWord} o ${p2} %.
 <strong>Druhý krok počítej z nové ceny</strong>. Jaká je konečná cena?`;
 }
 
-// 1) Sleva → sleva
 function genDownDown(){
-  const base=rndInt(600,6000);
-  const p1=choice([10,12,15,20,25,30]);
-  const p2=choice([5,8,10,12,15,20]);
-  const text=textTemplate(base,p1,p2,"zlevní","zlevní");
-  const opts=optionsForDouble(base,p1,p2,"dd");
-  const correct=opts.find(o=>o.value===Math.min(...opts.map(x=>Math.abs(x.value - Math.round(base*(1-p1/100)*(1-p2/100)))))).value;
+  const base = rndInt(600,6000);
+  const p1 = choice([10,12,15,20,25,30]);
+  const p2 = choice([5,8,10,12,15,20]);
+
+  const text = textTemplate(base, p1, p2, "zlevní", "zlevní");
+  const target = Math.round(base*(1 - p1/100)*(1 - p2/100));
+
+  let opts = optionsForDouble(base, p1, p2, "dd");
+  // pojistka: ať je správná možnost určitě mezi nabídkami
+  if (!opts.some(o => o.value === target)) {
+    opts = [{label: `${target} Kč`, value: target}, ...opts].slice(0,4);
+  }
+
+  const correct = target;
   return obj(text, correct, opts);
 }
+
 
 // 2) Sleva → zdražení
 function genDownUp(){
