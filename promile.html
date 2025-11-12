@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Promile – slovní úlohy</title>
+<meta name="theme-color" content="#0b1323" />
+<style>
+  :root{
+    --bg:#0b1323; --panel:#0f1729; --text:#e6eef8; --muted:#9fb0c7; --accent:#60a5fa;
+    --ok:#22c55e; --wrong:#ef4444; --card:#101826;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#0d1528);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .app{max-width:min(900px,96vw);margin:24px auto; padding:16px}
+  header{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:16px}
+  .hearts{position:fixed;top:10px;right:12px;display:flex;gap:6px;z-index:10}
+  .heart{width:20px;height:20px;display:grid;place-items:center;filter:drop-shadow(0 0 6px #f87171)}
+  .heart::before{content:"❤";font-size:18px}
+  .devils{position:fixed;top:36px;right:12px;display:flex;gap:6px;z-index:10}
+  .devil{width:20px;height:20px;display:grid;place-items:center;filter:drop-shadow(0 0 6px #a855f7)}
+  .devil::before{content:"😈";font-size:18px}
+  .panel{background:var(--panel);border:1px solid #1b2946;border-radius:18px;padding:16px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .tag{padding:4px 10px;border:1px solid #233152;border-radius:999px;color:var(--muted);font-size:12px}
+  .big{font-size:20px}
+  .btn{appearance:none;border:1px solid #25324f;background:#15203a;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer}
+  .btn:hover{background:#182444}
+  .btn.primary{border-color:#245bb5;background:#1b3b70}
+  .qcard{background:var(--card);border:1px solid #1a2744;border-radius:16px;padding:14px}
+  .qtitle{color:var(--muted);font-size:13px;margin-bottom:6px}
+  .qtext{font-size:20px; line-height:1.35}
+  .opts{display:grid;gap:10px;margin-top:12px}
+  .opt{border:1px solid #273454;background:#141d34;border-radius:12px;padding:10px 12px;cursor:pointer;text-align:left}
+  .opt:hover{background:#18223c}
+  .opt.correct{outline:2px solid var(--ok)}
+  .opt.wrong{outline:2px solid var(--wrong)}
+  .status{margin-top:8px;font-size:14px;color:var(--muted)}
+  .footer{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+  .sep{height:1px;background:#1b2946;margin:14px 0}
+  *{color:#ffffff!important}
+</style>
+</head>
+<body>
+<div class="hearts" id="hearts"></div>
+<div class="devils" id="devils"></div>
+
+<div class="app">
+  <header>
+    <div class="row">
+      <div class="tag">Kolo: <span id="roundNo">1</span></div>
+      <div class="tag">Otázka v kole: <span id="inRound">1</span>/<span id="perRound">6</span></div>
+      <div class="tag">Bezchybně toto kolo: <span id="streak">0</span>/<span id="perRound2">6</span></div>
+    </div>
+    <div class="row">
+      <button class="btn" id="btnReset">Reset</button>
+      <button class="btn primary" id="btnNext" disabled>Další</button>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="row" style="justify-content:space-between">
+      <div class="big" id="catName">—</div>
+      <div class="tag">Zbývá v kategorii: <span id="leftInCat">—</span></div>
+    </div>
+    <div class="sep"></div>
+
+    <div id="card" class="qcard">
+      <div class="qtitle" id="qTitle">Příklad</div>
+      <div class="qtext" id="qText">—</div>
+      <div class="opts" id="options"></div>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="footer">
+      <button class="btn" id="btnNewRound" disabled>Další kolo</button>
+    </div>
+  </section>
+
+  <p class="status">
+    „Promile“: 3 kategorie × 10 úloh. V jednom kole se každá kategorie objeví dvakrát (celkem 6 úloh).  
+    Pro „osoby/ks/Kč“ volíme data tak, aby výsledky vyšly celé. U samotných promile se toleruje drobná odchylka (0,1 ‰).
+  </p>
+</div>
+
+<script>
+/* ---------- Pomocné ---------- */
+const rndInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const choice=a=>a[rndInt(0,a.length-1)];
+const fmt=(x)=>Number.isInteger(x)?String(x):String(Number(x.toFixed(1)));
+const within=(a,b,eps=0.1)=>Math.abs(parseFloat(a)-parseFloat(b))<=eps;
+
+const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a);
+const randMultiple=(min,max,m)=> {
+  const start=Math.ceil(min/m)*m, end=Math.floor(max/m)*m;
+  if(start>end) return start;
+  const k=(end-start)/m;
+  return start + m*rndInt(0, Math.max(0,k));
+};
+// Pro část: chceme aby base * p / 1000 byl integer => base násobek (1000/gcd(1000,p))
+const multForPerMillePart=(p)=> 1000 / gcd(1000,p);
+// Pro základ: chceme aby cast * 1000 / p byl integer => cast násobek (p/gcd(p,1000))
+const multForPerMilleInverse=(p)=> p / gcd(p,1000);
+
+const JM = { kc:"Kč", os:"osob", ks:"ks", pm:"‰" };
+
+/* ---------- Data ---------- */
+const jmena=["Anna","Bára","Cyril","Daniel","Ema","Filip","Gabriela","Hana","Ivan","Jakub","Klára","Linda","Matěj","Nela","Ondra","Pavla","Radek","Saša","Tereza","Vojta"];
+const zbozi=["služba","převod","operace","balík","závoz","fakturace","objednávka"];
+const shop=["v bance","u dopravce","u operátora","u poskytovatele služeb","na poště"];
+const vyrobky=["šroub","součástka","čokoládka","náboj do tiskárny","propiska","košík","tričko"];
+
+/* ---------- Tvorba možností ---------- */
+function makeOptionList(correct, unit, deltas=[]) {
+  const set=new Set([fmt(correct)]);
+  deltas.forEach(d=>set.add(fmt(correct+d)));
+  set.add(fmt(correct*1.1)); set.add(fmt(correct*0.9));
+  let arr=[...set].slice(0,4).map(v=>({label:`${v} ${unit}`, value:parseFloat(v)}));
+  while(arr.length<4){
+    const v=parseFloat(fmt(correct+rndInt(-10,10)));
+    arr.push({label:`${fmt(v)} ${unit}`, value:v});
+  }
+  return arr.sort(()=>Math.random()-0.5);
+}
+
+/* ---------- Generátory úloh (3 kategorie) ---------- */
+// A) Kolik promile (může vyjít i s 1 desetinou)
+function UlohaKolikPromili(){
+  // Volíme celkem a část tak, aby část ≤ celkem a dávalo to smysl pro ks/osoby
+  const celek=rndInt(200,5000);
+  const cast=rndInt( Math.max(1,Math.floor(celek*0.01)), Math.floor(celek*0.4) );
+  const p = 1000*cast/celek; // může být desetinné
+  const typ=choice(["osoby","ks"]);
+  const unitBase = typ==="osoby"?JM.os:JM.ks;
+
+  const text = typ==="osoby"
+    ? `Ze třídy/školy bylo vybráno ${cast} ${JM.os} ze ${celek} ${JM.os}. Kolik je to promile?`
+    : `Ze skladu se vyřadilo ${cast} ${JM.ks} z celkových ${celek} ${JM.ks}. Kolik je to promile?`;
+
+  const opts = makeOptionList(p, JM.pm, [2,-2,5]);
+  return { text, correct:p, unit:JM.pm, opts };
+}
+
+// B) Hledáme základ (z části a ‰ dopočítat celek) – osoby nebo Kč (poplatky v promilích)
+function UlohaZakladPromili(){
+  const varianta = choice(["osoby","kcz"]);
+  if(varianta==="osoby"){
+    const p = choice([2,3,4,5,8,10,12,15,20,25,30,40,50,60,75,100,125,200,250]);
+    const cast = randMultiple(10,500, multForPerMilleInverse(p)); // ať celek vyjde integer
+    const celek = (cast*1000)/p;
+    const text = `V anketě odpovědělo „ANO“ ${cast} ${JM.os}, což je ${p} ‰ oslovených. Kolik lidí bylo osloveno celkem?`;
+    const opts = makeOptionList(celek, JM.os, [5,-5,10]);
+    return { text, correct:celek, unit:JM.os, opts };
+  }else{
+    // bankovní/administrativní poplatek v ‰ z částky
+    const p = choice([2,3,4,5,6,8,10,12,15,20,25,30,40,50]);
+    const poplatek = randMultiple(30,2000, multForPerMilleInverse(p)); // Kč, aby základ byl integer
+    const zaklad = (poplatek*1000)/p;
+    const text = `${choice(jmena)} zaplatil/a poplatek ${poplatek} Kč, což odpovídá sazbě ${p} ‰ z částky. Jaká byla původní částka?`;
+    const opts = makeOptionList(zaklad, JM.kc, [20,-20,50]);
+    return { text, correct:zaklad, unit:JM.kc, opts };
+  }
+}
+
+// C) Hledáme promilovou část (z celku a ‰ část) – osoby / ks / Kč
+function UlohaCastPromili(){
+  const typ=choice(["osoby","ks","kcz"]);
+  const p = choice([2,3,4,5,6,8,10,12,15,20,25,30,40,50,60,75,100,125,200,250]);
+
+  if(typ==="osoby"){
+    const celek = randMultiple(200,10000, multForPerMillePart(p)); // ať cast je integer
+    const cast = celek*p/1000;
+    const text = `Z populační skupiny o ${celek} ${JM.os} se zapojilo ${p} ‰. Kolik lidí to je?`;
+    const opts = makeOptionList(cast, JM.os, [5,-5,10]);
+    return { text, correct:cast, unit:JM.os, opts };
+  }
+  if(typ==="ks"){
+    const celek = randMultiple(500,20000, multForPerMillePart(p));
+    const cast = celek*p/1000;
+    const item = choice(vyrobky);
+    const text = `Z dávky ${celek} ${JM.ks} výrobků („${item}“) je zmetkovitost ${p} ‰. Kolik kusů je vadných?`;
+    const opts = makeOptionList(cast, JM.ks, [5,-5,12]);
+    return { text, correct:cast, unit:JM.ks, opts };
+  }
+  // Kč – poplatek/daň v promilích z částky
+  const celek = randMultiple(1000,200000, multForPerMillePart(p)); // ať část vyjde celé Kč
+  const cast = celek*p/1000;
+  const text = `Služba ${choice(zbozi)} ${choice(shop)} stojí ${p} ‰ z částky ${celek} Kč. Kolik korun činí poplatek?`;
+  const opts = makeOptionList(cast, JM.kc, [20,-20,50]);
+  return { text, correct:cast, unit:JM.kc, opts };
+}
+
+/* ---------- Kategorie (3×10) ---------- */
+function buildCategory(gen,n){const arr=[];for(let i=0;i<n;i++)arr.push(gen());return arr;}
+const CATS = [
+  {name:"1) Kolik promile (‰)?", items: buildCategory(UlohaKolikPromili,10)},
+  {name:"2) Hledáme základ (z části a ‰)", items: buildCategory(UlohaZakladPromili,10)},
+  {name:"3) Hledáme promilovou část (z celku a ‰)", items: buildCategory(UlohaCastPromili,10)}
+];
+
+/* ---------- Stav a UI ---------- */
+let round=1,inRound=0,roundCorrect=0;
+const used=CATS.map(()=>new Set());
+let current=null;
+
+const elCatName=document.getElementById('catName');
+const elLeftInCat=document.getElementById('leftInCat');
+const elQTitle=document.getElementById('qTitle');
+const elQText=document.getElementById('qText');
+const elOptions=document.getElementById('options');
+const elStatus=document.getElementById('status');
+const elRoundNo=document.getElementById('roundNo');
+const elInRound=document.getElementById('inRound');
+const elStreak=document.getElementById('streak');
+const elPerRound=document.getElementById('perRound');
+const elPerRound2=document.getElementById('perRound2');
+const elBtnNext=document.getElementById('btnNext');
+const elBtnNewRound=document.getElementById('btnNewRound');
+const elBtnReset=document.getElementById('btnReset');
+const elHearts=document.getElementById('hearts');
+const elDevils=document.getElementById('devils');
+
+const QUESTIONS_PER_ROUND=6; // ⬅ 6 úloh v kole
+elPerRound.textContent=QUESTIONS_PER_ROUND;
+elPerRound2.textContent=QUESTIONS_PER_ROUND;
+
+/* výběr kategorie: 0,1,2,0,1,2 ...  (dvakrát každá v kole) */
+function pickFromCategoryByIndex(stepIdx){
+  const catIdx = stepIdx % CATS.length;
+  const cat = CATS[catIdx];
+  const available=[];
+  for(let i=0;i<cat.items.length;i++) if(!used[catIdx].has(i)) available.push(i);
+  if(available.length===0) return null;
+  const qIndex=available[Math.floor(Math.random()*available.length)];
+  return {catIdx,qIndex};
+}
+
+function startNextQuestion(){
+  elStatus.textContent=''; elOptions.innerHTML=''; elBtnNext.disabled=true;
+
+  if(inRound>=QUESTIONS_PER_ROUND){
+    if(roundCorrect===QUESTIONS_PER_ROUND){
+      const heart=document.createElement('div'); heart.className='heart'; elHearts.appendChild(heart);
+      elStatus.innerHTML=`Kolo ${round} hotovo <strong>bez chyby</strong>! ❤`;
+    }else{
+      elStatus.innerHTML=`Kolo ${round} hotovo. Správně ${roundCorrect}/${QUESTIONS_PER_ROUND}.`;
+    }
+    elBtnNewRound.disabled=false; return;
+  }
+
+  const picked=pickFromCategoryByIndex(inRound);
+  if(!picked){
+    const catIdx=inRound % CATS.length;
+    elCatName.textContent=CATS[catIdx].name;
+    elLeftInCat.textContent='0';
+    elQTitle.textContent='V této kategorii došly nové úlohy.';
+    elQText.textContent='Zkus další kolo, nebo Reset.';
+    elBtnNewRound.disabled=false; return;
+  }
+
+  const cat=CATS[picked.catIdx];
+  const q=cat.items[picked.qIndex];
+  used[picked.catIdx].add(picked.qIndex);
+  current={catIndex:picked.catIdx,qIndex:picked.qIndex,correct:q.correct,unit:q.unit};
+
+  elCatName.textContent=cat.name;
+  elLeftInCat.textContent=String(cat.items.length - used[picked.catIdx].size);
+  elQTitle.textContent=`Úloha #${picked.qIndex+1}`;
+  elQText.innerHTML=q.text;
+
+  q.opts.forEach((opt)=>{
+    const b=document.createElement('button');
+    b.className='opt';
+    b.textContent=opt.label;
+    b.dataset.val=String(opt.value);
+    b.addEventListener('click',()=>{
+      if(b.dataset.locked==='1') return;
+      [...elOptions.children].forEach(x=>x.dataset.locked='1');
+
+      const clickedVal=Number(b.dataset.val);
+      const corrVal=Number(current.correct);
+
+      if(within(clickedVal,corrVal,0.1)){
+        b.classList.add('correct'); elStatus.textContent='Správně!'; roundCorrect++;
+      }else{
+        b.classList.add('wrong'); elStatus.textContent='Špatně.';
+        [...elOptions.children].forEach(x=>{
+          const v=Number(x.dataset.val);
+          if(within(v,corrVal,0.1)) x.classList.add('correct');
+        });
+        const devil=document.createElement('div'); devil.className='devil'; elDevils.appendChild(devil);
+      }
+      elBtnNext.disabled=false;
+    });
+    elOptions.appendChild(b);
+  });
+
+  inRound++; elInRound.textContent=String(inRound); elStreak.textContent=String(roundCorrect);
+}
+
+function newRound(){ round++; inRound=0; roundCorrect=0; elRoundNo.textContent=String(round); elInRound.textContent='0'; elStreak.textContent='0'; elBtnNewRound.disabled=true; startNextQuestion(); }
+function resetAll(){ round=1; inRound=0; roundCorrect=0; used.forEach(s=>s.clear()); elHearts.innerHTML=''; elDevils.innerHTML=''; elRoundNo.textContent='1'; elInRound.textContent='0'; elStreak.textContent='0'; elBtnNewRound.disabled=true; startNextQuestion(); }
+
+const elRoundNo=document.getElementById('roundNo');
+const elInRound=document.getElementById('inRound');
+const elStreak=document.getElementById('streak');
+
+document.getElementById('btnNext').addEventListener('click', startNextQuestion);
+document.getElementById('btnNewRound').addEventListener('click', newRound);
+document.getElementById('btnReset').addEventListener('click', resetAll);
+
+startNextQuestion();
+</script>
+</body>
+</html>
