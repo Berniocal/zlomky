@@ -87,31 +87,28 @@
 /* ---------- Pomocné ---------- */
 const rndInt=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
 const choice=a=>a[rndInt(0,a.length-1)];
-const fmt=(x)=>Number.isInteger(x)?String(x):String(Number(x.toFixed(1)));
+const fmt=x=>Number.isInteger(x)?String(x):String(Number(x.toFixed(1)));
 const within=(a,b,eps=0.1)=>Math.abs(parseFloat(a)-parseFloat(b))<=eps;
+const kc = x => Math.round(x);
 
 const gcd=(a,b)=>b?gcd(b,a%b):Math.abs(a);
-const randMultiple=(min,max,m)=> {
+const randMultiple=(min,max,m)=>{
   const start=Math.ceil(min/m)*m, end=Math.floor(max/m)*m;
   if(start>end) return start;
   const k=(end-start)/m;
   return start + m*rndInt(0, Math.max(0,k));
 };
-// Pro část: chceme aby base * p / 1000 byl integer => base násobek (1000/gcd(1000,p))
-const multForPerMillePart=(p)=> 1000 / gcd(1000,p);
-// Pro základ: chceme aby cast * 1000 / p byl integer => cast násobek (p/gcd(p,1000))
-const multForPerMilleInverse=(p)=> p / gcd(p,1000);
+const multForPerMillePart = p => 1000 / gcd(1000,p);     // base * p / 1000 integer
+const multForPerMilleInverse = p => p / gcd(p,1000);     // cast * 1000 / p integer
 
 const JM = { kc:"Kč", os:"osob", ks:"ks", pm:"‰" };
 
 /* ---------- Data ---------- */
 const jmena=["Anna","Bára","Cyril","Daniel","Ema","Filip","Gabriela","Hana","Ivan","Jakub","Klára","Linda","Matěj","Nela","Ondra","Pavla","Radek","Saša","Tereza","Vojta"];
-const zbozi=["služba","převod","operace","balík","závoz","fakturace","objednávka"];
-const shop=["v bance","u dopravce","u operátora","u poskytovatele služeb","na poště"];
 const vyrobky=["šroub","součástka","čokoládka","náboj do tiskárny","propiska","košík","tričko"];
 
-/* ---------- Tvorba možností ---------- */
-function makeOptionList(correct, unit, deltas=[]) {
+/* ---------- Možnosti ---------- */
+function makeOptionList(correct, unit, deltas=[]){
   const set=new Set([fmt(correct)]);
   deltas.forEach(d=>set.add(fmt(correct+d)));
   set.add(fmt(correct*1.1)); set.add(fmt(correct*0.9));
@@ -123,71 +120,64 @@ function makeOptionList(correct, unit, deltas=[]) {
   return arr.sort(()=>Math.random()-0.5);
 }
 
-/* ---------- Generátory úloh (3 kategorie) ---------- */
-// A) Kolik promile (může vyjít i s 1 desetinou)
+/* ---------- Generátory (3 kategorie) ---------- */
+// A) Kolik promile (může být s desetinou)
 function UlohaKolikPromili(){
-  // Volíme celkem a část tak, aby část ≤ celkem a dávalo to smysl pro ks/osoby
   const celek=rndInt(200,5000);
-  const cast=rndInt( Math.max(1,Math.floor(celek*0.01)), Math.floor(celek*0.4) );
-  const p = 1000*cast/celek; // může být desetinné
+  const cast=rndInt(Math.max(1,Math.floor(celek*0.01)), Math.floor(celek*0.4));
+  const p = 1000*cast/celek;
   const typ=choice(["osoby","ks"]);
-  const unitBase = typ==="osoby"?JM.os:JM.ks;
-
   const text = typ==="osoby"
-    ? `Ze třídy/školy bylo vybráno ${cast} ${JM.os} ze ${celek} ${JM.os}. Kolik je to promile?`
-    : `Ze skladu se vyřadilo ${cast} ${JM.ks} z celkových ${celek} ${JM.ks}. Kolik je to promile?`;
-
+    ? `Ze skupiny o ${celek} osobách bylo vybráno ${cast} osob. Kolik je to promile?`
+    : `Ze skladu se vyřadilo ${cast} ks z celkových ${celek} ks. Kolik je to promile?`;
   const opts = makeOptionList(p, JM.pm, [2,-2,5]);
-  return { text, correct:p, unit:JM.pm, opts };
+  return {text, correct:p, unit:JM.pm, opts};
 }
 
-// B) Hledáme základ (z části a ‰ dopočítat celek) – osoby nebo Kč (poplatky v promilích)
+// B) Hledáme základ (z části a ‰)
 function UlohaZakladPromili(){
   const varianta = choice(["osoby","kcz"]);
   if(varianta==="osoby"){
     const p = choice([2,3,4,5,8,10,12,15,20,25,30,40,50,60,75,100,125,200,250]);
-    const cast = randMultiple(10,500, multForPerMilleInverse(p)); // ať celek vyjde integer
+    const cast = randMultiple(10,500, multForPerMilleInverse(p));
     const celek = (cast*1000)/p;
-    const text = `V anketě odpovědělo „ANO“ ${cast} ${JM.os}, což je ${p} ‰ oslovených. Kolik lidí bylo osloveno celkem?`;
+    const text = `V anketě odpovědělo „ANO“ ${cast} osob, což je ${p} ‰ oslovených. Kolik lidí bylo osloveno celkem?`;
     const opts = makeOptionList(celek, JM.os, [5,-5,10]);
-    return { text, correct:celek, unit:JM.os, opts };
+    return {text, correct:celek, unit:JM.os, opts};
   }else{
-    // bankovní/administrativní poplatek v ‰ z částky
     const p = choice([2,3,4,5,6,8,10,12,15,20,25,30,40,50]);
-    const poplatek = randMultiple(30,2000, multForPerMilleInverse(p)); // Kč, aby základ byl integer
+    const poplatek = randMultiple(30,2000, multForPerMilleInverse(p));
     const zaklad = (poplatek*1000)/p;
     const text = `${choice(jmena)} zaplatil/a poplatek ${poplatek} Kč, což odpovídá sazbě ${p} ‰ z částky. Jaká byla původní částka?`;
     const opts = makeOptionList(zaklad, JM.kc, [20,-20,50]);
-    return { text, correct:zaklad, unit:JM.kc, opts };
+    return {text, correct:zaklad, unit:JM.kc, opts};
   }
 }
 
-// C) Hledáme promilovou část (z celku a ‰ část) – osoby / ks / Kč
+// C) Hledáme promilovou část (z celku a ‰)
 function UlohaCastPromili(){
   const typ=choice(["osoby","ks","kcz"]);
   const p = choice([2,3,4,5,6,8,10,12,15,20,25,30,40,50,60,75,100,125,200,250]);
-
   if(typ==="osoby"){
-    const celek = randMultiple(200,10000, multForPerMillePart(p)); // ať cast je integer
+    const celek = randMultiple(200,10000, multForPerMillePart(p));
     const cast = celek*p/1000;
-    const text = `Z populační skupiny o ${celek} ${JM.os} se zapojilo ${p} ‰. Kolik lidí to je?`;
+    const text = `Z populace o ${celek} osobách tvoří ${p} ‰ účastníků. Kolik lidí to je?`;
     const opts = makeOptionList(cast, JM.os, [5,-5,10]);
-    return { text, correct:cast, unit:JM.os, opts };
+    return {text, correct:cast, unit:JM.os, opts};
   }
   if(typ==="ks"){
     const celek = randMultiple(500,20000, multForPerMillePart(p));
     const cast = celek*p/1000;
     const item = choice(vyrobky);
-    const text = `Z dávky ${celek} ${JM.ks} výrobků („${item}“) je zmetkovitost ${p} ‰. Kolik kusů je vadných?`;
+    const text = `Z dávky ${celek} ks výrobků („${item}“) je zmetkovitost ${p} ‰. Kolik kusů je vadných?`;
     const opts = makeOptionList(cast, JM.ks, [5,-5,12]);
-    return { text, correct:cast, unit:JM.ks, opts };
+    return {text, correct:cast, unit:JM.ks, opts};
   }
-  // Kč – poplatek/daň v promilích z částky
-  const celek = randMultiple(1000,200000, multForPerMillePart(p)); // ať část vyjde celé Kč
+  const celek = randMultiple(1000,200000, multForPerMillePart(p));
   const cast = celek*p/1000;
-  const text = `Služba ${choice(zbozi)} ${choice(shop)} stojí ${p} ‰ z částky ${celek} Kč. Kolik korun činí poplatek?`;
+  const text = `Poplatek je ${p} ‰ z částky ${celek} Kč. Kolik korun činí poplatek?`;
   const opts = makeOptionList(cast, JM.kc, [20,-20,50]);
-  return { text, correct:cast, unit:JM.kc, opts };
+  return {text, correct:cast, unit:JM.kc, opts};
 }
 
 /* ---------- Kategorie (3×10) ---------- */
@@ -220,11 +210,11 @@ const elBtnReset=document.getElementById('btnReset');
 const elHearts=document.getElementById('hearts');
 const elDevils=document.getElementById('devils');
 
-const QUESTIONS_PER_ROUND=6; // ⬅ 6 úloh v kole
+const QUESTIONS_PER_ROUND=6;
 elPerRound.textContent=QUESTIONS_PER_ROUND;
 elPerRound2.textContent=QUESTIONS_PER_ROUND;
 
-/* výběr kategorie: 0,1,2,0,1,2 ...  (dvakrát každá v kole) */
+/* výběr: 0,1,2,0,1,2 v rámci kola */
 function pickFromCategoryByIndex(stepIdx){
   const catIdx = stepIdx % CATS.length;
   const cat = CATS[catIdx];
@@ -298,17 +288,32 @@ function startNextQuestion(){
   inRound++; elInRound.textContent=String(inRound); elStreak.textContent=String(roundCorrect);
 }
 
-function newRound(){ round++; inRound=0; roundCorrect=0; elRoundNo.textContent=String(round); elInRound.textContent='0'; elStreak.textContent='0'; elBtnNewRound.disabled=true; startNextQuestion(); }
-function resetAll(){ round=1; inRound=0; roundCorrect=0; used.forEach(s=>s.clear()); elHearts.innerHTML=''; elDevils.innerHTML=''; elRoundNo.textContent='1'; elInRound.textContent='0'; elStreak.textContent='0'; elBtnNewRound.disabled=true; startNextQuestion(); }
+function newRound(){
+  round++; inRound=0; roundCorrect=0;
+  elRoundNo.textContent=String(round);
+  elInRound.textContent='0';
+  elStreak.textContent='0';
+  elBtnNewRound.disabled=true;
+  startNextQuestion();
+}
 
-const elRoundNo=document.getElementById('roundNo');
-const elInRound=document.getElementById('inRound');
-const elStreak=document.getElementById('streak');
+function resetAll(){
+  round=1; inRound=0; roundCorrect=0;
+  used.forEach(s=>s.clear());
+  elHearts.innerHTML=''; elDevils.innerHTML='';
+  elRoundNo.textContent='1';
+  elInRound.textContent='0';
+  elStreak.textContent='0';
+  elBtnNewRound.disabled=true;
+  startNextQuestion();
+}
 
-document.getElementById('btnNext').addEventListener('click', startNextQuestion);
-document.getElementById('btnNewRound').addEventListener('click', newRound);
-document.getElementById('btnReset').addEventListener('click', resetAll);
+/* listenery – přidat jen jednou */
+elBtnNext.addEventListener('click', startNextQuestion);
+elBtnNewRound.addEventListener('click', newRound);
+elBtnReset.addEventListener('click', resetAll);
 
+/* start */
 startNextQuestion();
 </script>
 </body>
