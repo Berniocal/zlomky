@@ -11,7 +11,12 @@
     --ok:#22c55e; --wrong:#ef4444; --card:#101826;
   }
   *{box-sizing:border-box}
-  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#0d1528);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  html,body{
+    height:100%;margin:0;
+    background:linear-gradient(180deg,var(--bg),#0d1528);
+    color:var(--text);
+    font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif
+  }
   .app{max-width:min(900px,96vw);margin:24px auto; padding:16px}
   header{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:16px}
 
@@ -34,14 +39,28 @@
   .qcard{background:var(--card);border:1px solid #1a2744;border-radius:16px;padding:14px}
   .qtitle{color:var(--muted);font-size:13px;margin-bottom:6px}
   .qtext{font-size:24px; line-height:1.2; white-space:nowrap; display:inline-block}
-  .opts{display:grid;gap:10px;margin-top:12px}
-  .opt{border:1px solid #273454;background:#141d34;border-radius:12px;padding:10px 12px;cursor:pointer;text-align:left}
-  .opt:hover{background:#18223c}
-  .opt.correct{outline:2px solid var(--ok)}
-  .opt.wrong{outline:2px solid var(--wrong)}
   .status{margin-top:8px;font-size:14px;color:var(--muted)}
   .footer{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
   .sep{height:1px;background:#1b2946;margin:14px 0}
+
+  .answerRow{
+    margin-top:14px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    align-items:center;
+  }
+  .answerRow label{font-size:14px;color:var(--muted)}
+  .answerRow input{
+    min-width:120px;
+    padding:8px 10px;
+    border-radius:10px;
+    border:1px solid #243356;
+    background:#0f1729;
+    color:var(--text);
+    outline:none;
+  }
+  .answerRow input:focus{border-color:var(--accent)}
 
   /* Všechen text čistě bílý */
   * { color: #ffffff !important; }
@@ -74,18 +93,25 @@
     <div id="card" class="qcard">
       <div class="qtitle" id="qTitle">Příklad</div>
       <div class="qtext" id="qText">—</div>
-      <div class="opts" id="options"></div>
+
+      <div class="answerRow">
+        <label for="answerInput">Výsledek:</label>
+        <input type="number" id="answerInput" inputmode="numeric" />
+        <button class="btn" id="btnCheck">Ověřit</button>
+      </div>
+
       <div class="status" id="status"></div>
     </div>
 
     <div class="footer">
-      <button class="btn" id="btnAgain" style="display:none">Zopakovat úroveň</button>
+      <!-- Další řešíme přes btnNext nahoře -->
     </div>
   </section>
 
   <p class="status">
-    5 úrovní práce s celými čísly. V každé úrovni musíš zvládnout <strong>6 příkladů za sebou bez chyby</strong>.
-    Pak postoupíš na další úroveň a získáš 👨‍🦳. Za každou chybu přibude 😈 a úroveň se začne znovu.
+    5 úrovní práce s celými čísly. V každé úrovni musíš zvládnout
+    <strong>6 příkladů za sebou bez chyby</strong>.
+    Pak postoupíš na další úroveň a získáš 👨‍🦳. Za každou chybu přibude 😈 a úroveň se začíná znovu (0/6).
   </p>
 </div>
 
@@ -97,323 +123,224 @@ function randInt(min, max){
 function choice(arr){
   return arr[Math.floor(Math.random()*arr.length)];
 }
-function shuffle(arr){
-  for(let i=arr.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [arr[i],arr[j]]=[arr[j],arr[i]];
-  }
-  return arr;
-}
 function fmtInt(n){
   return n < 0 ? '('+n+')' : String(n);
 }
 
-/* ----------------- Generátor příkladů ----------------- */
-/* Úroveň 1 – sčítání a odčítání dvou celých čísel */
+/* Vyhodnocení výrazu s klasickou prioritou operací */
+function evalExpr(expr){
+  const js = expr
+    .replace(/\s+/g,'')
+    .replace(/·/g,'*')
+    .replace(/:/g,'/')
+    .replace(/−/g,'-')
+    .replace(/\[/g,'(').replace(/\]/g,')')
+    .replace(/\{/g,'(').replace(/\}/g,')');
+  try{
+    const val = Function('"use strict";return ('+js+');')();
+    if(!Number.isFinite(val)) return null;
+    return val;
+  }catch(e){
+    return null;
+  }
+}
+
+/* ----------------- Generátory příkladů ----------------- */
+/* Úroveň 1 – sčítání a odčítání dvou celých čísel
+   podmínka: když jedno je trojciferné (100–999), druhé je jen dvojciferné (10–99) */
 function genLevel1(){
   while(true){
-    const a = randInt(1,1000);
-    const b = randInt(1,1000);
-    const pattern = randInt(0,5);
-    let left,right,op,res;
-    switch(pattern){
-      case 0: // a + (-b)
-        left = a; right = -b; op = '+'; res = left + right; break;
-      case 1: // -a + b
-        left = -a; right = b; op = '+'; res = left + right; break;
-      case 2: // a - b
-        left = a; right = b; op = '−'; res = left - right; break;
-      case 3: // -a - b
-        left = -a; right = b; op = '−'; res = left - right; break;
-      case 4: // -a - (-b)
-        left = -a; right = -b; op = '−'; res = left - right; break;
-      case 5: // a - (-b)
-        left = a; right = -b; op = '−'; res = left - right; break;
-    }
-    if(Math.abs(res) <= 1000){
-      return {
-        text: fmtInt(left) + ' ' + op + ' ' + fmtInt(right),
-        result: res
-      };
-    }
+    let a = randInt(-999,999);
+    let b = randInt(-999,999);
+    if(a === 0) a = choice([-9,-5,5,9]);
+    if(b === 0) b = choice([-9,-5,5,9]);
+
+    const da = Math.abs(a), db = Math.abs(b);
+    const is3a = (da>=100 && da<=999);
+    const is3b = (db>=100 && db<=999);
+
+    if(is3a && !(db>=10 && db<=99)) continue;
+    if(is3b && !(da>=10 && da<=99)) continue;
+
+    const op = choice(['+','−']);
+    const expr = fmtInt(a)+' '+op+' '+fmtInt(b);
+    const val = evalExpr(expr);
+    if(val === null) continue;
+    if(!Number.isInteger(val) || Math.abs(val)>1000) continue;
+    return { text: expr, result: val };
   }
 }
 
-/* Úroveň 2 – násobení a dělení celých čísel */
+/* Úroveň 2 – násobení a dělení celých čísel
+   - 2 čísla: násobení
+   - 3 čísla: tvar (a · b) : c
+   - u tří čísel: právě jedno dvojciferné, ostatní jednociferné, žádné a*...:a */
 function genLevel2(){
   while(true){
-    const aAbs = randInt(2,25);
-    const bAbs = randInt(2,25);
-    const pattern = randInt(0,5);
-    let expr, res;
-
-    if(pattern <= 2){
-      // jen násobení
-      const signA = choice([1,-1]);
-      const signB = choice([1,-1]);
-      const a = signA*aAbs, b = signB*bAbs;
-      res = a*b;
-      if(Math.abs(res) > 1000) continue;
-      expr = fmtInt(a) + ' · ' + fmtInt(b);
-      return { text: expr, result: res };
+    if(Math.random() < 0.4){
+      // jen násobení dvou čísel
+      let a = randInt(-20,20);
+      let b = randInt(-20,20);
+      if(Math.abs(a)<=1) a = choice([-3,-2,2,3]);
+      if(Math.abs(b)<=1) b = choice([-3,-2,2,3]);
+      const expr = fmtInt(a)+' · '+fmtInt(b);
+      const val = evalExpr(expr);
+      if(val === null) continue;
+      if(!Number.isInteger(val) || Math.abs(val)>1000) continue;
+      return { text: expr, result: val };
     }else{
-      // (a · b) : c
-      const prod = aAbs*bAbs;
-      const divisors = [];
-      for(let d=2; d<=Math.min(20,prod); d++){
-        if(prod % d === 0) divisors.push(d);
-      }
-      if(divisors.length === 0) continue;
-      const cAbs = choice(divisors);
+      // (dvojciferné · jednociferné) : jednociferné
+      let two = randInt(10,99)*(Math.random()<0.5 ? 1:-1);
+      let s1 = randInt(2,9)*(Math.random()<0.5 ? 1:-1);
+      let s2 = randInt(2,9)*(Math.random()<0.5 ? 1:-1);
 
-      const signA = choice([1,-1]);
-      const signB = choice([1,-1]);
-      const signC = choice([1,-1]);
-      const a = signA*aAbs, b = signB*bAbs, c = signC*cAbs;
+      // vyhoď triviální vzory |two| == |s2|
+      if(Math.abs(two) === Math.abs(s2)) continue;
 
-      res = (a*b)/c;
-      if(!Number.isInteger(res)) continue;
-      if(Math.abs(res) > 1000) continue;
-
-      expr = fmtInt(a) + ' · ' + fmtInt(b) + ' : ' + fmtInt(c);
-      return { text: expr, result: res };
+      const expr = '('+fmtInt(two)+' · '+fmtInt(s1)+') : '+fmtInt(s2);
+      const val = evalExpr(expr);
+      if(val === null) continue;
+      if(!Number.isInteger(val) || Math.abs(val)>1000) continue;
+      return { text: expr, result: val };
     }
   }
 }
 
-/* Úroveň 3 – více čísel, půlka jen +/−, půlka mix s ·/: */
-function genAddSubChain(minLen=3,maxLen=5){
+/* Úroveň 3 – 3 příklady jen +/−, 3 příklady mix s ·/: */
+function genLevel3AddSub(){
   while(true){
-    const len = randInt(minLen, maxLen);
-    let value = randInt(-50,50);
-    if(value===0) value = 1;
-    let expr = fmtInt(value);
+    const len = randInt(3,5); // počet čísel
+    let first = randInt(-50,50);
+    if(first === 0) first = choice([-7,-5,5,7]);
+    let expr = fmtInt(first);
+
     for(let i=2;i<=len;i++){
       const op = choice(['+','−']);
-      let step = randInt(1,100);
-      if(Math.random() < 0.5) step *= -1;
-      if(op === '−') step = -step;
-      const newValue = value + step;
-      if(Math.abs(newValue) > 1000){ continue; }
-      expr += ' ' + op + ' ' + fmtInt(step>0?step:-step);
-      value = newValue;
+      let n = randInt(-50,50);
+      if(n === 0) n = choice([-7,-5,5,7]);
+      expr += ' '+op+' '+fmtInt(n);
     }
-    if(Math.abs(value) <= 1000){
-      return { text: expr, result: value };
-    }
+
+    const val = evalExpr(expr);
+    if(val === null) continue;
+    if(!Number.isInteger(val) || Math.abs(val)>1000) continue;
+    return { text: expr, result: val };
   }
 }
 
-function genMixedChain(minLen=3,maxLen=5){
+function genLevel3Mix(){
   while(true){
-    const len = randInt(minLen,maxLen);
-    let value = randInt(-10,10);
-    if(value===0) value = 2;
-    let expr = fmtInt(value);
+    const len = randInt(3,5);
+    let first = randInt(-12,12);
+    if(first === 0) first = choice([-5,-3,3,5]);
+    let expr = fmtInt(first);
     let hasMulDiv = false;
 
     for(let i=2;i<=len;i++){
       let op = choice(['+','−','·',':']);
-      if(i === len && !hasMulDiv) op = choice(['·',':']); // zajisti aspoň jednu · nebo :
+      if(i === len && !hasMulDiv) op = choice(['·',':']);
+      let n = randInt(-9,9);
+      if(n === 0) n = choice([-3,-2,2,3]);
+      expr += ' '+op+' '+fmtInt(n);
+      if(op === '·' || op === ':') hasMulDiv = true;
+    }
 
-      if(op === '+'){
-        let step = randInt(1,50);
-        if(Math.random()<0.5) step*=-1;
-        const newValue = value + step;
-        if(Math.abs(newValue)>1000){ i--; continue; }
-        expr += ' + ' + fmtInt(step);
-        value = newValue;
-      }else if(op === '−'){
-        let step = randInt(1,50);
-        if(Math.random()<0.5) step*=-1;
-        const newValue = value - step;
-        if(Math.abs(newValue)>1000){ i--; continue; }
-        expr += ' − ' + fmtInt(step);
-        value = newValue;
-      }else if(op === '·'){
-        let m = randInt(2,9);
-        if(Math.abs(value*m)>1000){ i--; continue; }
-        if(Math.random()<0.5) m*=-1;
-        expr += ' · ' + fmtInt(m);
-        value = value*m;
-        hasMulDiv = true;
-      }else if(op === ':'){
-        const absV = Math.abs(value);
-        const divisors = [];
-        for(let d=2; d<=Math.min(15,absV); d++){
-          if(absV % d === 0) divisors.push(d);
-        }
-        if(divisors.length === 0){ i--; continue; }
-        let d = choice(divisors);
-        if(Math.random()<0.5) d*=-1;
-        const newValue = value / d;
-        if(!Number.isInteger(newValue) || Math.abs(newValue)>1000){ i--; continue; }
-        expr += ' : ' + fmtInt(d);
-        value = newValue;
-        hasMulDiv = true;
-      }
-    }
-    if(hasMulDiv && Math.abs(value)<=1000){
-      return { text: expr, result: value };
-    }
+    const val = evalExpr(expr);
+    if(val === null) continue;
+    if(!Number.isInteger(val) || Math.abs(val)>1000) continue;
+    if(!hasMulDiv) continue;
+    return { text: expr, result: val };
   }
+}
+
+function genLevel3(){
+  // 50 % jen +/−, 50 % mix
+  if(Math.random() < 0.5) return genLevel3AddSub();
+  return genLevel3Mix();
 }
 
 /* Úroveň 4 – v každém příkladu všechny 4 operace */
 function genLevel4(){
   while(true){
-    const len = randInt(5,7); // 5–7 čísel
-    let value = randInt(-10,10);
-    if(value===0) value = 3;
-    let expr = fmtInt(value);
-    const opsPool = ['+','−','·',':'];
-    let usedOps = new Set();
+    const len = randInt(5,7); // počet čísel
+    let first = randInt(-12,12);
+    if(first === 0) first = choice([-5,-3,3,5]);
+    let expr = fmtInt(first);
+
+    const opsAll = ['+','−','·',':'];
+    const opsUsed = new Set();
 
     for(let i=2;i<=len;i++){
-      let op = choice(opsPool);
+      let op = choice(opsAll);
       if(i === len){
-        // na posledním kroku zkusíme doplnit chybějící operaci
-        const remaining = opsPool.filter(o=>!usedOps.has(o));
-        if(remaining.length>0) op = choice(remaining);
+        const missing = opsAll.filter(o => !opsUsed.has(o));
+        if(missing.length) op = choice(missing);
       }
-
-      if(op === '+'){
-        let step = randInt(1,40);
-        if(Math.random()<0.5) step*=-1;
-        const newValue = value + step;
-        if(Math.abs(newValue)>1000){ i--; continue; }
-        expr += ' + ' + fmtInt(step);
-        value = newValue;
-      }else if(op === '−'){
-        let step = randInt(1,40);
-        if(Math.random()<0.5) step*=-1;
-        const newValue = value - step;
-        if(Math.abs(newValue)>1000){ i--; continue; }
-        expr += ' − ' + fmtInt(step);
-        value = newValue;
-      }else if(op === '·'){
-        let m = randInt(2,8);
-        if(Math.abs(value*m)>1000){ i--; continue; }
-        if(Math.random()<0.5) m*=-1;
-        expr += ' · ' + fmtInt(m);
-        value = value*m;
-      }else if(op === ':'){
-        const absV = Math.abs(value);
-        const divisors = [];
-        for(let d=2; d<=Math.min(15,absV); d++){
-          if(absV % d === 0) divisors.push(d);
-        }
-        if(divisors.length === 0){ i--; continue; }
-        let d = choice(divisors);
-        if(Math.random()<0.5) d*=-1;
-        const newValue = value / d;
-        if(!Number.isInteger(newValue) || Math.abs(newValue)>1000){ i--; continue; }
-        expr += ' : ' + fmtInt(d);
-        value = newValue;
-      }
-      usedOps.add(op);
+      let n = randInt(-9,9);
+      if(n === 0) n = choice([-3,-2,2,3]);
+      expr += ' '+op+' '+fmtInt(n);
+      opsUsed.add(op);
     }
 
-    if(opsPool.every(o=>usedOps.has(o)) && Math.abs(value)<=1000){
-      return { text: expr, result: value };
-    }
+    const val = evalExpr(expr);
+    if(val === null) continue;
+    if(!Number.isInteger(val) || Math.abs(val)>1000) continue;
+    if(!opsAll.every(o => opsUsed.has(o))) continue;
+    return { text: expr, result: val };
   }
 }
 
-/* Úroveň 5 – závorky, všechny operace, 6–10 čísel */
+/* Úroveň 5 – závorky (), [] , {}, 6–10 čísel, všechny operace */
 function genLevel5(){
   while(true){
-    // Složený tvar: (A + [B − C]) · {D : E} − F   atd.
     const A = randInt(-20,20) || 3;
     const B = randInt(-20,20) || -5;
     const C = randInt(-20,20) || 7;
 
-    const d1 = A + (B - C); // (A + [B − C])
-
-    let D = randInt(2,15);
-    if(Math.random()<0.5) D *= -1;
+    const D = randInt(2,15)*(Math.random()<0.5?1:-1);
+    const absD = Math.abs(D);
     const divisors = [];
-    for(let e=2; e<=Math.min(15,Math.abs(D)); e++){
-      if(Math.abs(D) % e === 0) divisors.push(e);
+    for(let e=2; e<=Math.min(15,absD); e++){
+      if(absD % e === 0) divisors.push(e);
     }
-    if(divisors.length===0) continue;
-    let E = choice(divisors);
-    if(Math.random()<0.5) E *= -1;
+    if(divisors.length === 0) continue;
+    let E = choice(divisors)*(Math.random()<0.5?1:-1);
 
-    const d2 = D / E; // {D : E}
-    if(!Number.isInteger(d2)) continue;
+    let F = randInt(-30,30) || 4;
+    let G = randInt(-20,20) || -3;
 
-    let F = randInt(-30,30);
-    if(F === 0) F = 4;
+    let expr = '('+fmtInt(A)+' + ['+fmtInt(B)+' − '+fmtInt(C)+']) · {'+
+               fmtInt(D)+' : '+fmtInt(E)+'} − '+fmtInt(F)+' + '+fmtInt(G);
 
-    let G = randInt(-20,20);
-    if(G === 0) G = -3;
-
-    // Výraz: (A + [B − C]) · {D : E} − F + G
-    let value = d1 * d2 - F + G;
-    if(Math.abs(value) > 1000) continue;
-
-    // Náhodně přidáme ještě jeden závorkovaný blok, aby mělo 6–10 čísel
-    let extra = '';
+    // možnost přidat ještě jednu závorku, ať je víc čísel
     if(Math.random() < 0.5){
       let H = randInt(-15,15) || 5;
       let I = randInt(-15,15) || -6;
-      const block = H + I;
-      if(Math.abs(value + block) <= 1000){
-        const op = choice(['+','−']);
-        if(op === '+'){
-          value = value + block;
-          extra = ' + (' + fmtInt(H) + ' + ' + fmtInt(I) + ')';
-        }else{
-          value = value - block;
-          extra = ' − (' + fmtInt(H) + ' + ' + fmtInt(I) + ')';
-        }
-      }
+      const op = Math.random() < 0.5 ? '+' : '−';
+      expr += ' '+op+' ('+fmtInt(H)+' + '+fmtInt(I)+')';
     }
 
-    const expr =
-      '(' + fmtInt(A) + ' + [' + fmtInt(B) + ' − ' + fmtInt(C) + ']) · {' +
-      fmtInt(D) + ' : ' + fmtInt(E) + '} − ' + fmtInt(F) + ' + ' + fmtInt(G) +
-      extra;
-
-    if(Math.abs(value) <= 1000){
-      return { text: expr, result: value };
-    }
+    const val = evalExpr(expr);
+    if(val === null) continue;
+    if(!Number.isInteger(val) || Math.abs(val)>1000) continue;
+    return { text: expr, result: val };
   }
 }
 
 /* Dispatcher podle úrovně */
 const LEVELS = [
-  { name: '1) Sčítání a odčítání celých čísel', gen: genLevel1 },
-  { name: '2) Násobení a dělení celých čísel', gen: genLevel2 },
-  { name: '3) Více čísel – +/− a mix ·/:', gen: function(){
-      // polovina jen +/−, polovina mix
-      return Math.random() < 0.5 ? genAddSubChain() : genMixedChain();
-    } 
-  },
-  { name: '4) Všechny 4 operace v jednom příkladu', gen: genLevel4 },
-  { name: '5) Závorky (), [], {} + všechny operace', gen: genLevel5 }
+  { name:'1) Sčítání a odčítání celých čísel', gen:genLevel1 },
+  { name:'2) Násobení a dělení celých čísel', gen:genLevel2 },
+  { name:'3) Smíšené příklady s více čísly', gen:genLevel3 },
+  { name:'4) Všechny 4 operace v jednom příkladu', gen:genLevel4 },
+  { name:'5) Závorky (), [], {} + všechny operace', gen:genLevel5 }
 ];
 
-/* ----------------- Distraktory (odpovědi) ----------------- */
-function makeOptions(correct){
-  const set = new Set();
-  set.add(correct);
-  while(set.size < 4){
-    const delta = choice([-15,-10,-5,-3,-2,-1,1,2,3,5,10,15]);
-    let cand = correct + delta;
-    if(Math.abs(cand) > 2000) continue;
-    if(cand === correct) continue;
-    set.add(cand);
-  }
-  return shuffle(Array.from(set));
-}
-
 /* ----------------- Stav a UI ----------------- */
-let levelIndex = 0;              // 0..4
-let inLevel = 0;                 // 0..6
-let streak = 0;                  // 0..6
-let current = null;              // { expr, result, options }
+let levelIndex = 0;      // 0..4
+let inLevel = 0;         // 0..6
+let streak = 0;          // 0..6
+let current = null;      // { text, result }
 
 const QUESTIONS_PER_LEVEL = 6;
 
@@ -427,12 +354,12 @@ const elHeroesCount = document.getElementById('heroesCount');
 
 const elQTitle = document.getElementById('qTitle');
 const elQText = document.getElementById('qText');
-const elOptions = document.getElementById('options');
 const elStatus = document.getElementById('status');
+const elAnswer = document.getElementById('answerInput');
 
 const elBtnNext = document.getElementById('btnNext');
 const elBtnReset = document.getElementById('btnReset');
-const elBtnAgain = document.getElementById('btnAgain');
+const elBtnCheck = document.getElementById('btnCheck');
 
 function updateHeader(){
   elLevelNo.textContent = String(levelIndex+1);
@@ -448,111 +375,105 @@ function setStatus(msg){
 
 /* Nový příklad v aktuální úrovni */
 function nextQuestion(){
-  elStatus.textContent = '';
-  elOptions.innerHTML = '';
-  elBtnNext.disabled = true;
-  elBtnAgain.style.display = 'none';
-
   if(levelIndex >= LEVELS.length){
-    // Hotovo
     elQTitle.textContent = 'Hotovo!';
     elQText.textContent = 'Dokončil jsi všechny úrovně.';
-    return;
-  }
-
-  if(streak >= QUESTIONS_PER_LEVEL){
-    // Úroveň už je splněná – čekáme na posun dál
-    setStatus('Úroveň je splněná, přejdi na další nebo Reset.');
+    setStatus('');
+    elBtnCheck.disabled = true;
+    elBtnNext.disabled = true;
     return;
   }
 
   const gen = LEVELS[levelIndex].gen;
   const q = gen();
-  current = { expr: q.text, correct: q.result };
+  current = q;
 
-  elQTitle.textContent = 'Příklad ' + (streak+1) + ' z ' + QUESTIONS_PER_LEVEL;
+  inLevel = streak; // kolik už má správně → příklad (streak+1)
+  elQTitle.textContent = 'Příklad '+(streak+1)+' z '+QUESTIONS_PER_LEVEL;
   elQText.textContent = q.text;
 
-  const opts = makeOptions(q.result);
-  current.options = opts;
+  elAnswer.value = '';
+  elAnswer.focus();
+  setStatus('');
+  elBtnCheck.disabled = false;
+  elBtnNext.disabled = true;
 
-  opts.forEach(val=>{
-    const b = document.createElement('button');
-    b.className = 'opt';
-    b.textContent = String(val);
-    b.dataset.val = String(val);
-    b.addEventListener('click', ()=>{
-      if(b.dataset.locked === '1') return;
-      [...elOptions.children].forEach(x=>x.dataset.locked='1');
-
-      const chosen = Number(b.dataset.val);
-      if(chosen === current.correct){
-        b.classList.add('correct');
-        setStatus('Správně!');
-        streak++;
-        inLevel++;
-        elInLevel.textContent = String(inLevel);
-        elStreak.textContent = String(streak);
-
-        if(streak >= QUESTIONS_PER_LEVEL){
-          // Úroveň dokončena
-          const hero = document.createElement('div');
-          hero.className = 'hero';
-          elHeroes.appendChild(hero);
-          elHeroesCount.textContent = String(elHeroes.children.length);
-
-          if(levelIndex < LEVELS.length-1){
-            setStatus('Výborně! Úroveň '+(levelIndex+1)+' splněna bez chyby. 👨‍🦳 Připravuje se další úroveň.');
-          }else{
-            setStatus('Skvěle! Dokončil jsi všechny úrovně. 👨‍🦳');
-          }
-        }
-      }else{
-        b.classList.add('wrong');
-        setStatus('Špatně. Tuto úroveň začneme znovu od začátku (0/6).');
-
-        // označ správnou odpověď
-        [...elOptions.children].forEach(x=>{
-          if(Number(x.dataset.val) === current.correct) x.classList.add('correct');
-        });
-
-        const devil = document.createElement('div');
-        devil.className = 'devil';
-        elDevils.appendChild(devil);
-
-        // reset úrovně
-        streak = 0;
-        inLevel = 0;
-        elInLevel.textContent = '0';
-        elStreak.textContent = '0';
-        elBtnAgain.style.display = 'inline-block';
-      }
-
-      elBtnNext.disabled = false;
-    });
-    elOptions.appendChild(b);
-  });
-
-  updateHeader();
+  elInLevel.textContent = String(streak);
 }
 
-/* Posun na další úroveň (pokud je splněná) */
-function goNextLevel(){
-  if(streak < QUESTIONS_PER_LEVEL){
-    // jen další příklad v téže úrovni
-    nextQuestion();
+/* Kontrola odpovědi z inputu */
+function checkAnswer(){
+  if(!current) return;
+  const raw = elAnswer.value.trim();
+  if(raw === ''){
+    setStatus('Zadej výsledek jako celé číslo.');
     return;
   }
-  if(levelIndex < LEVELS.length-1){
-    levelIndex++;
+  const userVal = Number(raw);
+  if(!Number.isFinite(userVal) || !Number.isInteger(userVal)){
+    setStatus('Zadej prosím celé číslo (bez desetinné čárky).');
+    return;
+  }
+
+  if(userVal === current.result){
+    streak++;
+    inLevel = streak;
+    elStreak.textContent = String(streak);
+    elInLevel.textContent = String(inLevel);
+
+    if(streak >= QUESTIONS_PER_LEVEL){
+      // celá úroveň bez chyby
+      const hero = document.createElement('div');
+      hero.className = 'hero';
+      elHeroes.appendChild(hero);
+      elHeroesCount.textContent = String(elHeroes.children.length);
+
+      if(levelIndex < LEVELS.length-1){
+        setStatus('Výborně! Úroveň '+(levelIndex+1)+' je bez chyby. 👨‍🦳 Stiskni "Další" pro další úroveň.');
+      }else{
+        setStatus('Skvěle! Dokončil jsi všechny úrovně. 👨‍🦳');
+      }
+    }else{
+      setStatus('Správně! Stiskni "Další" pro další příklad.');
+    }
+
+    elBtnCheck.disabled = true;
+    elBtnNext.disabled = false;
+  }else{
+    // špatně – čertík a restart úrovně
+    const devil = document.createElement('div');
+    devil.className = 'devil';
+    elDevils.appendChild(devil);
+
     streak = 0;
     inLevel = 0;
-    updateHeader();
-    nextQuestion();
+    elStreak.textContent = '0';
+    elInLevel.textContent = '0';
+
+    setStatus('Špatně. Tuto úroveň začneš znovu od začátku (0/6). Stiskni "Další" pro nový příklad v této úrovni.');
+    elBtnCheck.disabled = true;
+    elBtnNext.disabled = false;
+  }
+}
+
+/* Další – buď nový příklad v téže úrovni, nebo posun na další úroveň */
+function goNext(){
+  if(streak >= QUESTIONS_PER_LEVEL){
+    if(levelIndex < LEVELS.length-1){
+      levelIndex++;
+      streak = 0;
+      inLevel = 0;
+      updateHeader();
+      nextQuestion();
+    }else{
+      // všechny úrovně hotové
+      setStatus('Všechny úrovně jsou dokončené.');
+      elBtnNext.disabled = true;
+      elBtnCheck.disabled = true;
+    }
   }else{
-    // všechny úrovně hotové
-    elBtnNext.disabled = true;
-    setStatus('Všechny úrovně jsou dokončené.');
+    // pokračujeme v té samé úrovni od začátku série
+    nextQuestion();
   }
 }
 
@@ -566,16 +487,19 @@ function resetAll(){
   elHeroesCount.textContent = '0';
   updateHeader();
   elBtnNext.disabled = true;
+  elBtnCheck.disabled = false;
   nextQuestion();
 }
 
 /* Ovládání */
-elBtnNext.addEventListener('click', goNextLevel);
+elBtnCheck.addEventListener('click', checkAnswer);
+elBtnNext.addEventListener('click', goNext);
 elBtnReset.addEventListener('click', resetAll);
-elBtnAgain.addEventListener('click', ()=>{
-  setStatus('Zkoušíme tuto úroveň znovu. Aktuální série: 0/6.');
-  elBtnAgain.style.display = 'none';
-  nextQuestion();
+elAnswer.addEventListener('keydown', e=>{
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    if(!elBtnCheck.disabled) checkAnswer();
+  }
 });
 
 /* start */
