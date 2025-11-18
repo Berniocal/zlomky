@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Celá čísla – pokročilý trénink</title>
+<meta name="theme-color" content="#0b1323" />
+<style>
+  :root{
+    --bg:#0b1323; --panel:#0f1729; --text:#e6eef8; --muted:#9fb0c7; --accent:#60a5fa;
+    --ok:#22c55e; --wrong:#ef4444; --card:#101826;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#0d1528);color:var(--text);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  .app{max-width:min(900px,96vw);margin:24px auto; padding:16px}
+  header{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-bottom:16px}
+
+  /* Odměny (pán se šedivými vlasy) + čertíci */
+  .heroes{position:fixed;top:10px;right:12px;display:flex;gap:6px;z-index:10}
+  .hero{width:22px;height:22px;display:grid;place-items:center;filter:drop-shadow(0 0 6px #38bdf8)}
+  .hero::before{content:"👨‍🦳";font-size:20px}
+  .devils{position:fixed;top:40px;right:12px;display:flex;gap:6px;z-index:10}
+  .devil{width:22px;height:22px;display:grid;place-items:center;filter:drop-shadow(0 0 6px #a855f7)}
+  .devil::before{content:"😈";font-size:18px}
+
+  .panel{background:var(--panel);border:1px solid #1b2946;border-radius:18px;padding:16px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .tag{padding:4px 10px;border:1px solid #233152;border-radius:999px;color:var(--muted);font-size:12px}
+  .big{font-size:20px}
+  .btn{appearance:none;border:1px solid #25324f;background:#15203a;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer}
+  .btn:hover{background:#182444}
+  .btn.primary{border-color:#245bb5;background:#1b3b70}
+
+  .qcard{background:var(--card);border:1px solid #1a2744;border-radius:16px;padding:14px}
+  .qtitle{color:var(--muted);font-size:13px;margin-bottom:6px}
+  .qtext{font-size:24px; line-height:1.2; white-space:nowrap; display:inline-block}
+  .opts{display:grid;gap:10px;margin-top:12px}
+  .opt{border:1px solid #273454;background:#141d34;border-radius:12px;padding:10px 12px;cursor:pointer;text-align:left}
+  .opt:hover{background:#18223c}
+  .opt.correct{outline:2px solid var(--ok)}
+  .opt.wrong{outline:2px solid var(--wrong)}
+  .status{margin-top:8px;font-size:14px;color:var(--muted)}
+  .footer{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+  .sep{height:1px;background:#1b2946;margin:14px 0}
+
+  /* Všechen text čistě bílý */
+  * { color: #ffffff !important; }
+</style>
+</head>
+<body>
+<div class="heroes" id="heroes"></div>
+<div class="devils" id="devils"></div>
+
+<div class="app">
+  <header>
+    <div class="row">
+      <div class="tag">Úroveň: <span id="levelNo">1</span>/5</div>
+      <div class="tag">Příklad v této úrovni: <span id="inLevel">0</span>/6</div>
+      <div class="tag">Správně v řadě: <span id="streak">0</span>/6</div>
+    </div>
+    <div class="row">
+      <button class="btn" id="btnReset">Reset</button>
+      <button class="btn primary" id="btnNext" disabled>Další</button>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="row" style="justify-content:space-between">
+      <div class="big" id="levelName">—</div>
+      <div class="tag">Odměny: <span id="heroesCount">0</span>/5 👨‍🦳</div>
+    </div>
+    <div class="sep"></div>
+
+    <div id="card" class="qcard">
+      <div class="qtitle" id="qTitle">Příklad</div>
+      <div class="qtext" id="qText">—</div>
+      <div class="opts" id="options"></div>
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="footer">
+      <button class="btn" id="btnAgain" style="display:none">Zopakovat úroveň</button>
+    </div>
+  </section>
+
+  <p class="status">
+    5 úrovní práce s celými čísly. V každé úrovni musíš zvládnout <strong>6 příkladů za sebou bez chyby</strong>.
+    Pak postoupíš na další úroveň a získáš 👨‍🦳. Za každou chybu přibude 😈 a úroveň se začne znovu.
+  </p>
+</div>
+
+<script>
+/* ----------------- Pomocné funkce ----------------- */
+function randInt(min, max){
+  return Math.floor(Math.random()*(max-min+1))+min;
+}
+function choice(arr){
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+function fmtInt(n){
+  return n < 0 ? '('+n+')' : String(n);
+}
+
+/* ----------------- Generátor příkladů ----------------- */
+/* Úroveň 1 – sčítání a odčítání dvou celých čísel */
+function genLevel1(){
+  while(true){
+    const a = randInt(1,1000);
+    const b = randInt(1,1000);
+    const pattern = randInt(0,5);
+    let left,right,op,res;
+    switch(pattern){
+      case 0: // a + (-b)
+        left = a; right = -b; op = '+'; res = left + right; break;
+      case 1: // -a + b
+        left = -a; right = b; op = '+'; res = left + right; break;
+      case 2: // a - b
+        left = a; right = b; op = '−'; res = left - right; break;
+      case 3: // -a - b
+        left = -a; right = b; op = '−'; res = left - right; break;
+      case 4: // -a - (-b)
+        left = -a; right = -b; op = '−'; res = left - right; break;
+      case 5: // a - (-b)
+        left = a; right = -b; op = '−'; res = left - right; break;
+    }
+    if(Math.abs(res) <= 1000){
+      return {
+        text: fmtInt(left) + ' ' + op + ' ' + fmtInt(right),
+        result: res
+      };
+    }
+  }
+}
+
+/* Úroveň 2 – násobení a dělení celých čísel */
+function genLevel2(){
+  while(true){
+    const aAbs = randInt(2,25);
+    const bAbs = randInt(2,25);
+    const pattern = randInt(0,5);
+    let expr, res;
+
+    if(pattern <= 2){
+      // jen násobení
+      const signA = choice([1,-1]);
+      const signB = choice([1,-1]);
+      const a = signA*aAbs, b = signB*bAbs;
+      res = a*b;
+      if(Math.abs(res) > 1000) continue;
+      expr = fmtInt(a) + ' · ' + fmtInt(b);
+      return { text: expr, result: res };
+    }else{
+      // (a · b) : c
+      const prod = aAbs*bAbs;
+      const divisors = [];
+      for(let d=2; d<=Math.min(20,prod); d++){
+        if(prod % d === 0) divisors.push(d);
+      }
+      if(divisors.length === 0) continue;
+      const cAbs = choice(divisors);
+
+      const signA = choice([1,-1]);
+      const signB = choice([1,-1]);
+      const signC = choice([1,-1]);
+      const a = signA*aAbs, b = signB*bAbs, c = signC*cAbs;
+
+      res = (a*b)/c;
+      if(!Number.isInteger(res)) continue;
+      if(Math.abs(res) > 1000) continue;
+
+      expr = fmtInt(a) + ' · ' + fmtInt(b) + ' : ' + fmtInt(c);
+      return { text: expr, result: res };
+    }
+  }
+}
+
+/* Úroveň 3 – více čísel, půlka jen +/−, půlka mix s ·/: */
+function genAddSubChain(minLen=3,maxLen=5){
+  while(true){
+    const len = randInt(minLen, maxLen);
+    let value = randInt(-50,50);
+    if(value===0) value = 1;
+    let expr = fmtInt(value);
+    for(let i=2;i<=len;i++){
+      const op = choice(['+','−']);
+      let step = randInt(1,100);
+      if(Math.random() < 0.5) step *= -1;
+      if(op === '−') step = -step;
+      const newValue = value + step;
+      if(Math.abs(newValue) > 1000){ continue; }
+      expr += ' ' + op + ' ' + fmtInt(step>0?step:-step);
+      value = newValue;
+    }
+    if(Math.abs(value) <= 1000){
+      return { text: expr, result: value };
+    }
+  }
+}
+
+function genMixedChain(minLen=3,maxLen=5){
+  while(true){
+    const len = randInt(minLen,maxLen);
+    let value = randInt(-10,10);
+    if(value===0) value = 2;
+    let expr = fmtInt(value);
+    let hasMulDiv = false;
+
+    for(let i=2;i<=len;i++){
+      let op = choice(['+','−','·',':']);
+      if(i === len && !hasMulDiv) op = choice(['·',':']); // zajisti aspoň jednu · nebo :
+
+      if(op === '+'){
+        let step = randInt(1,50);
+        if(Math.random()<0.5) step*=-1;
+        const newValue = value + step;
+        if(Math.abs(newValue)>1000){ i--; continue; }
+        expr += ' + ' + fmtInt(step);
+        value = newValue;
+      }else if(op === '−'){
+        let step = randInt(1,50);
+        if(Math.random()<0.5) step*=-1;
+        const newValue = value - step;
+        if(Math.abs(newValue)>1000){ i--; continue; }
+        expr += ' − ' + fmtInt(step);
+        value = newValue;
+      }else if(op === '·'){
+        let m = randInt(2,9);
+        if(Math.abs(value*m)>1000){ i--; continue; }
+        if(Math.random()<0.5) m*=-1;
+        expr += ' · ' + fmtInt(m);
+        value = value*m;
+        hasMulDiv = true;
+      }else if(op === ':'){
+        const absV = Math.abs(value);
+        const divisors = [];
+        for(let d=2; d<=Math.min(15,absV); d++){
+          if(absV % d === 0) divisors.push(d);
+        }
+        if(divisors.length === 0){ i--; continue; }
+        let d = choice(divisors);
+        if(Math.random()<0.5) d*=-1;
+        const newValue = value / d;
+        if(!Number.isInteger(newValue) || Math.abs(newValue)>1000){ i--; continue; }
+        expr += ' : ' + fmtInt(d);
+        value = newValue;
+        hasMulDiv = true;
+      }
+    }
+    if(hasMulDiv && Math.abs(value)<=1000){
+      return { text: expr, result: value };
+    }
+  }
+}
+
+/* Úroveň 4 – v každém příkladu všechny 4 operace */
+function genLevel4(){
+  while(true){
+    const len = randInt(5,7); // 5–7 čísel
+    let value = randInt(-10,10);
+    if(value===0) value = 3;
+    let expr = fmtInt(value);
+    const opsPool = ['+','−','·',':'];
+    let usedOps = new Set();
+
+    for(let i=2;i<=len;i++){
+      let op = choice(opsPool);
+      if(i === len){
+        // na posledním kroku zkusíme doplnit chybějící operaci
+        const remaining = opsPool.filter(o=>!usedOps.has(o));
+        if(remaining.length>0) op = choice(remaining);
+      }
+
+      if(op === '+'){
+        let step = randInt(1,40);
+        if(Math.random()<0.5) step*=-1;
+        const newValue = value + step;
+        if(Math.abs(newValue)>1000){ i--; continue; }
+        expr += ' + ' + fmtInt(step);
+        value = newValue;
+      }else if(op === '−'){
+        let step = randInt(1,40);
+        if(Math.random()<0.5) step*=-1;
+        const newValue = value - step;
+        if(Math.abs(newValue)>1000){ i--; continue; }
+        expr += ' − ' + fmtInt(step);
+        value = newValue;
+      }else if(op === '·'){
+        let m = randInt(2,8);
+        if(Math.abs(value*m)>1000){ i--; continue; }
+        if(Math.random()<0.5) m*=-1;
+        expr += ' · ' + fmtInt(m);
+        value = value*m;
+      }else if(op === ':'){
+        const absV = Math.abs(value);
+        const divisors = [];
+        for(let d=2; d<=Math.min(15,absV); d++){
+          if(absV % d === 0) divisors.push(d);
+        }
+        if(divisors.length === 0){ i--; continue; }
+        let d = choice(divisors);
+        if(Math.random()<0.5) d*=-1;
+        const newValue = value / d;
+        if(!Number.isInteger(newValue) || Math.abs(newValue)>1000){ i--; continue; }
+        expr += ' : ' + fmtInt(d);
+        value = newValue;
+      }
+      usedOps.add(op);
+    }
+
+    if(opsPool.every(o=>usedOps.has(o)) && Math.abs(value)<=1000){
+      return { text: expr, result: value };
+    }
+  }
+}
+
+/* Úroveň 5 – závorky, všechny operace, 6–10 čísel */
+function genLevel5(){
+  while(true){
+    // Složený tvar: (A + [B − C]) · {D : E} − F   atd.
+    const A = randInt(-20,20) || 3;
+    const B = randInt(-20,20) || -5;
+    const C = randInt(-20,20) || 7;
+
+    const d1 = A + (B - C); // (A + [B − C])
+
+    let D = randInt(2,15);
+    if(Math.random()<0.5) D *= -1;
+    const divisors = [];
+    for(let e=2; e<=Math.min(15,Math.abs(D)); e++){
+      if(Math.abs(D) % e === 0) divisors.push(e);
+    }
+    if(divisors.length===0) continue;
+    let E = choice(divisors);
+    if(Math.random()<0.5) E *= -1;
+
+    const d2 = D / E; // {D : E}
+    if(!Number.isInteger(d2)) continue;
+
+    let F = randInt(-30,30);
+    if(F === 0) F = 4;
+
+    let G = randInt(-20,20);
+    if(G === 0) G = -3;
+
+    // Výraz: (A + [B − C]) · {D : E} − F + G
+    let value = d1 * d2 - F + G;
+    if(Math.abs(value) > 1000) continue;
+
+    // Náhodně přidáme ještě jeden závorkovaný blok, aby mělo 6–10 čísel
+    let extra = '';
+    if(Math.random() < 0.5){
+      let H = randInt(-15,15) || 5;
+      let I = randInt(-15,15) || -6;
+      const block = H + I;
+      if(Math.abs(value + block) <= 1000){
+        const op = choice(['+','−']);
+        if(op === '+'){
+          value = value + block;
+          extra = ' + (' + fmtInt(H) + ' + ' + fmtInt(I) + ')';
+        }else{
+          value = value - block;
+          extra = ' − (' + fmtInt(H) + ' + ' + fmtInt(I) + ')';
+        }
+      }
+    }
+
+    const expr =
+      '(' + fmtInt(A) + ' + [' + fmtInt(B) + ' − ' + fmtInt(C) + ']) · {' +
+      fmtInt(D) + ' : ' + fmtInt(E) + '} − ' + fmtInt(F) + ' + ' + fmtInt(G) +
+      extra;
+
+    if(Math.abs(value) <= 1000){
+      return { text: expr, result: value };
+    }
+  }
+}
+
+/* Dispatcher podle úrovně */
+const LEVELS = [
+  { name: '1) Sčítání a odčítání celých čísel', gen: genLevel1 },
+  { name: '2) Násobení a dělení celých čísel', gen: genLevel2 },
+  { name: '3) Více čísel – +/− a mix ·/:', gen: function(){
+      // polovina jen +/−, polovina mix
+      return Math.random() < 0.5 ? genAddSubChain() : genMixedChain();
+    } 
+  },
+  { name: '4) Všechny 4 operace v jednom příkladu', gen: genLevel4 },
+  { name: '5) Závorky (), [], {} + všechny operace', gen: genLevel5 }
+];
+
+/* ----------------- Distraktory (odpovědi) ----------------- */
+function makeOptions(correct){
+  const set = new Set();
+  set.add(correct);
+  while(set.size < 4){
+    const delta = choice([-15,-10,-5,-3,-2,-1,1,2,3,5,10,15]);
+    let cand = correct + delta;
+    if(Math.abs(cand) > 2000) continue;
+    if(cand === correct) continue;
+    set.add(cand);
+  }
+  return shuffle(Array.from(set));
+}
+
+/* ----------------- Stav a UI ----------------- */
+let levelIndex = 0;              // 0..4
+let inLevel = 0;                 // 0..6
+let streak = 0;                  // 0..6
+let current = null;              // { expr, result, options }
+
+const QUESTIONS_PER_LEVEL = 6;
+
+const elLevelNo = document.getElementById('levelNo');
+const elLevelName = document.getElementById('levelName');
+const elInLevel = document.getElementById('inLevel');
+const elStreak = document.getElementById('streak');
+const elHeroes = document.getElementById('heroes');
+const elDevils = document.getElementById('devils');
+const elHeroesCount = document.getElementById('heroesCount');
+
+const elQTitle = document.getElementById('qTitle');
+const elQText = document.getElementById('qText');
+const elOptions = document.getElementById('options');
+const elStatus = document.getElementById('status');
+
+const elBtnNext = document.getElementById('btnNext');
+const elBtnReset = document.getElementById('btnReset');
+const elBtnAgain = document.getElementById('btnAgain');
+
+function updateHeader(){
+  elLevelNo.textContent = String(levelIndex+1);
+  elLevelName.textContent = LEVELS[levelIndex].name;
+  elInLevel.textContent = String(inLevel);
+  elStreak.textContent = String(streak);
+  elHeroesCount.textContent = String(elHeroes.children.length);
+}
+
+function setStatus(msg){
+  elStatus.textContent = msg;
+}
+
+/* Nový příklad v aktuální úrovni */
+function nextQuestion(){
+  elStatus.textContent = '';
+  elOptions.innerHTML = '';
+  elBtnNext.disabled = true;
+  elBtnAgain.style.display = 'none';
+
+  if(levelIndex >= LEVELS.length){
+    // Hotovo
+    elQTitle.textContent = 'Hotovo!';
+    elQText.textContent = 'Dokončil jsi všechny úrovně.';
+    return;
+  }
+
+  if(streak >= QUESTIONS_PER_LEVEL){
+    // Úroveň už je splněná – čekáme na posun dál
+    setStatus('Úroveň je splněná, přejdi na další nebo Reset.');
+    return;
+  }
+
+  const gen = LEVELS[levelIndex].gen;
+  const q = gen();
+  current = { expr: q.text, correct: q.result };
+
+  elQTitle.textContent = 'Příklad ' + (streak+1) + ' z ' + QUESTIONS_PER_LEVEL;
+  elQText.textContent = q.text;
+
+  const opts = makeOptions(q.result);
+  current.options = opts;
+
+  opts.forEach(val=>{
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.textContent = String(val);
+    b.dataset.val = String(val);
+    b.addEventListener('click', ()=>{
+      if(b.dataset.locked === '1') return;
+      [...elOptions.children].forEach(x=>x.dataset.locked='1');
+
+      const chosen = Number(b.dataset.val);
+      if(chosen === current.correct){
+        b.classList.add('correct');
+        setStatus('Správně!');
+        streak++;
+        inLevel++;
+        elInLevel.textContent = String(inLevel);
+        elStreak.textContent = String(streak);
+
+        if(streak >= QUESTIONS_PER_LEVEL){
+          // Úroveň dokončena
+          const hero = document.createElement('div');
+          hero.className = 'hero';
+          elHeroes.appendChild(hero);
+          elHeroesCount.textContent = String(elHeroes.children.length);
+
+          if(levelIndex < LEVELS.length-1){
+            setStatus('Výborně! Úroveň '+(levelIndex+1)+' splněna bez chyby. 👨‍🦳 Připravuje se další úroveň.');
+          }else{
+            setStatus('Skvěle! Dokončil jsi všechny úrovně. 👨‍🦳');
+          }
+        }
+      }else{
+        b.classList.add('wrong');
+        setStatus('Špatně. Tuto úroveň začneme znovu od začátku (0/6).');
+
+        // označ správnou odpověď
+        [...elOptions.children].forEach(x=>{
+          if(Number(x.dataset.val) === current.correct) x.classList.add('correct');
+        });
+
+        const devil = document.createElement('div');
+        devil.className = 'devil';
+        elDevils.appendChild(devil);
+
+        // reset úrovně
+        streak = 0;
+        inLevel = 0;
+        elInLevel.textContent = '0';
+        elStreak.textContent = '0';
+        elBtnAgain.style.display = 'inline-block';
+      }
+
+      elBtnNext.disabled = false;
+    });
+    elOptions.appendChild(b);
+  });
+
+  updateHeader();
+}
+
+/* Posun na další úroveň (pokud je splněná) */
+function goNextLevel(){
+  if(streak < QUESTIONS_PER_LEVEL){
+    // jen další příklad v téže úrovni
+    nextQuestion();
+    return;
+  }
+  if(levelIndex < LEVELS.length-1){
+    levelIndex++;
+    streak = 0;
+    inLevel = 0;
+    updateHeader();
+    nextQuestion();
+  }else{
+    // všechny úrovně hotové
+    elBtnNext.disabled = true;
+    setStatus('Všechny úrovně jsou dokončené.');
+  }
+}
+
+/* Reset všeho */
+function resetAll(){
+  levelIndex = 0;
+  streak = 0;
+  inLevel = 0;
+  elHeroes.innerHTML = '';
+  elDevils.innerHTML = '';
+  elHeroesCount.textContent = '0';
+  updateHeader();
+  elBtnNext.disabled = true;
+  nextQuestion();
+}
+
+/* Ovládání */
+elBtnNext.addEventListener('click', goNextLevel);
+elBtnReset.addEventListener('click', resetAll);
+elBtnAgain.addEventListener('click', ()=>{
+  setStatus('Zkoušíme tuto úroveň znovu. Aktuální série: 0/6.');
+  elBtnAgain.style.display = 'none';
+  nextQuestion();
+});
+
+/* start */
+updateHeader();
+nextQuestion();
+</script>
+</body>
+</html>
