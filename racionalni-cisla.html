@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Racionální čísla – 6 náhodných příkladů</title>
+<title>Racionální čísla – kola po 6 příkladech</title>
 <meta name="theme-color" content="#0b1323" />
 <style>
   :root{
@@ -43,6 +43,7 @@
     font-size:24px;
     line-height:1.3;
     margin-bottom:12px;
+    min-height:2em;
   }
   .status{
     font-size:14px;
@@ -55,7 +56,6 @@
     margin:10px 0 4px;
   }
 
-  /* Jednoduché pole pro "desetinný" režim */
   .whole-input{
     padding:8px 10px;
     border-radius:10px;
@@ -67,7 +67,6 @@
   }
   .whole-input:focus{outline:none;border-color:var(--accent)}
 
-  /* Zlomek – dvě kolonky a čára */
   .frac-wrapper{
     display:none;
     align-items:center;
@@ -97,7 +96,6 @@
     margin:3px 0;
   }
 
-  /* Klávesnice */
   .kbd{
     margin-top:10px;
     display:grid;
@@ -127,7 +125,6 @@
     flex-wrap:wrap;
   }
 
-  /* Odměny – babičky a čertíci */
   .icons-wrap{
     position:fixed;
     top:8px;
@@ -144,6 +141,11 @@
     align-items:center;
   }
 </style>
+
+<!-- MathJax -->
+<script id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+</script>
 </head>
 <body>
 <div class="icons-wrap">
@@ -157,20 +159,19 @@
 
 <div class="app">
   <header>
-    <div class="tag">Příklad <span id="qIndex">1</span> / 6</div>
-    <div class="tag">Správných: <span id="qCorrect">0</span></div>
-    <div class="tag">Špatných: <span id="qWrong">0</span></div>
+    <div class="tag">Kolo: <span id="roundNo">1</span></div>
+    <div class="tag">Příklad v kole: <span id="qIndex">1</span> / 6</div>
+    <div class="tag">Správných celkem: <span id="qCorrect">0</span></div>
+    <div class="tag">Špatných celkem: <span id="qWrong">0</span></div>
     <div style="flex:1"></div>
-    <button class="btn" id="btnReset">Nová šestice</button>
+    <button class="btn" id="btnResetAll">Reset vše</button>
   </header>
 
   <section class="panel">
     <div class="qtext" id="qText"></div>
 
     <div class="answer-area">
-      <!-- jedna kolonka -->
       <input id="answerWhole" class="whole-input" autocomplete="off" inputmode="decimal" />
-      <!-- zlomek -->
       <div id="fracWrapper" class="frac-wrapper">
         <span>=</span>
         <div class="frac-box">
@@ -195,7 +196,7 @@
       <button data-key="1">1</button>
       <button data-key="2">2</button>
       <button data-key="3">3</button>
-      <button data-key="-">−</button>
+      <button data-key="neg">−</button>
 
       <button data-key="0">0</button>
       <button data-key=",">,</button>
@@ -206,6 +207,7 @@
       <div>
         <button class="btn primary" id="btnCheck">Ověřit výsledek</button>
         <button class="btn" id="btnNext" disabled>Další příklad</button>
+        <button class="btn" id="btnNextRound" disabled>Další kolo</button>
       </div>
       <div id="status" class="status"></div>
     </div>
@@ -213,7 +215,7 @@
 </div>
 
 <script>
-/* ---------- pomocné funkce pro čísla ---------- */
+/* ---------- pomocné funkce pro čísla / zlomky ---------- */
 function randInt(min, max){
   return Math.floor(Math.random()*(max-min+1))+min;
 }
@@ -225,151 +227,272 @@ function gcd(a,b){
   while(b){ let t=a%b; a=b; b=t; }
   return a||1;
 }
+function makeFrac(n,d){
+  if(d === 0) return {n:1,d:0};
+  if(d < 0){ n=-n; d=-d; }
+  const g = gcd(n,d);
+  n = n/g; d = d/g;
+  return {n,d};
+}
+function addFrac(a,b){
+  return makeFrac(a.n*b.d + b.n*a.d, a.d*b.d);
+}
+function subFrac(a,b){
+  return makeFrac(a.n*b.d - b.n*a.d, a.d*b.d);
+}
+function mulFrac(a,b){
+  return makeFrac(a.n*b.n, a.d*b.d);
+}
+function divFrac(a,b){
+  return makeFrac(a.n*b.d, a.d*b.n);
+}
+function fracValue(fr){ return fr.n/fr.d; }
+
+/* "hezký" zlomek jako výsledek: |n|<=99, d<=99, d | 1000 */
+function isNiceResult(fr){
+  if(fr.d === 0) return false;
+  const n = Math.abs(fr.n), d = Math.abs(fr.d);
+  if(n > 99 || d > 99) return false;
+  if(1000 % d !== 0) return false;
+  return true;
+}
+
+/* formát desetinného čísla s čárkou (max 3 desetinná místa) */
 function fmtDec(x){
-  // dvě desetinná místa, ořezání nul
-  let s = x.toFixed(2);
+  let s = x.toFixed(3);
   s = s.replace('.', ',');
-  // ořízni zbytečné nuly
   if(s.includes(',')){
     s = s.replace(/0+$/,'').replace(/,$/,'');
   }
   return s;
 }
-function toFrac(x){
-  const sign = x<0 ? -1 : 1;
-  x = Math.abs(x);
-  let bestN = 0, bestD = 1, bestErr = 1e9;
-  for(let d=1; d<=30; d++){
-    let n = Math.round(x*d);
-    let val = n/d;
-    let err = Math.abs(val-x);
-    if(err < bestErr-1e-10){
-      bestErr = err;
-      bestN = n; bestD = d;
-    }
-  }
-  bestN *= sign;
-  const g = gcd(bestN,bestD);
-  bestN /= g; bestD /= g;
-  return {n:bestN, d:bestD};
-}
-function fracToString(fr){
+
+/* TeX pro zlomek:
+   - když d=1, vrací jen celé číslo
+   - jinak vrací \frac{n}{d} se správným znaménkem */
+function texFrac(fr){
   const n = fr.n, d = fr.d;
-  if(d===1) return String(n);
-  return (n<0 ? '−' + Math.abs(n) : String(n)) + '/' + d;
+  if(d === 1) return String(n);
+  if(n < 0) return '-\\frac{' + Math.abs(n) + '}{' + d + '}';
+  return '\\frac{' + n + '}{' + d + '}';
+}
+function texFracParen(fr){
+  return '\\left(' + texFrac(fr) + '\\right)';
+}
+function texDec(fr){
+  return fmtDec(fracValue(fr));
 }
 
-/* ---------- generátory 6 typů příkladů ---------- */
-// číslo s jedním desetinným místem 0,2 až 9,9
-function randDec10(min, max){
-  const k = randInt(min*10, max*10);
-  return k/10;
+/* náhodný desetinný zlomek – d=10 nebo 100 */
+function randDecFrac(min, max, denChoices){
+  while(true){
+    const d = choice(denChoices || [10,100]);
+    const nMin = Math.ceil(min*d);
+    const nMax = Math.floor(max*d);
+    if(nMin > nMax) continue;
+    const n = randInt(nMin, nMax);
+    const fr = makeFrac(n,d);
+    // nechceme n/d = 1, 2/2 apod.
+    if(Math.abs(fr.n) === fr.d) continue;
+    return fr;
+  }
 }
-// číslo se dvěma desetinnými místy
-function randDec100(min, max){
-  const k = randInt(min*100, max*100);
-  return k/100;
+
+/* náhodný "hezký" zlomek – q jen z mocnin 2 a 5 */
+function randNiceFrac(numMax, denChoices){
+  while(true){
+    const d = choice(denChoices || [2,4,5,8,10,20]);
+    let n = randInt(-numMax, numMax);
+    if(n === 0) continue;
+    const fr = makeFrac(n,d);
+    if(Math.abs(fr.n) === fr.d) continue; // nechceme 1/1, 2/2,...
+    if(Math.abs(fr.n) <= numMax && Math.abs(fr.d) <= 99) return fr;
+  }
 }
+
+/* ---------- generátory 6 typů příkladů (pevná struktura A) ---------- */
+
+/* TYPE 1: [a : f1 + b : c − d] · e */
 function genType1(){
-  // [a : 1/2 + b : c − d] · e
-  const a = randDec100(0.2,0.8);
-  const b = -randDec100(0.2,0.7);
-  const c = -randDec10(0.8,1.5);
-  const d = randInt(5,12);
-  const frac = choice([[2,5],[3,5],[3,4]]);
-  const e = frac[0]/frac[1];
+  while(true){
+    const a = randDecFrac(0.2, 0.8, [10,100]);
+    const b = randDecFrac(-0.7, -0.2, [10,100]);
+    const c = randDecFrac(-1.5, -0.8, [10,100]);
+    const dInt = randInt(4,10);
+    const d = makeFrac(dInt,1);
 
-  const value = ((a/0.5) + (b/c) - d) * e;
+    const f1 = randNiceFrac(3,[2,4,5]);
+    const e  = randNiceFrac(4,[5,10,20]);
 
-  const txt = `[${fmtDec(a)} : 1/2 + (${fmtDec(b)}) : (${fmtDec(c)}) − ${d}] · ${frac[0]}/${frac[1]} =`;
-  return {text:txt, value};
+    const term1 = divFrac(a,f1);
+    const term2 = divFrac(b,c);
+    let inner = addFrac(term1,term2);
+    inner = subFrac(inner,d);
+    const res = mulFrac(inner,e);
+
+    if(!isNiceResult(res)) continue;
+
+    const latex =
+      '\\big[ ' + texDec(a) + ' : ' + texFrac(f1) +
+      ' + \\left(' + texDec(b) + '\\right) : \\left(' + texDec(c) + '\\right) - ' +
+      dInt + ' \\big] \\cdot ' + texFrac(e);
+
+    return { latex, frac: res };
+  }
 }
+
+/* TYPE 2: (A−B) · (C−D) + E : (m/n) */
 function genType2(){
-  // (A−B) · (C−D) + E : (m/n)
-  const A = randDec10(3,7);
-  const B = randDec10(1,3);
-  const C = randDec10(7,10);
-  const D = randDec10(9,12);
-  const E = -randDec100(1.0,2.0);
-  const frac = choice([[3,5],[4,5],[5,6]]);
-  const F = frac[0]/frac[1];
+  while(true){
+    const A = randDecFrac(3.0,7.0,[10]);
+    const B = randDecFrac(1.0,3.0,[10]);
+    const C = randDecFrac(7.0,10.0,[10]);
+    const D = randDecFrac(9.0,12.0,[10]);
 
-  const value = (A-B)*(C-D) + E/F;
-  const txt = `(${fmtDec(A)} − ${fmtDec(B)}) · (${fmtDec(C)} − ${fmtDec(D)}) + (${fmtDec(E)}) : ${frac[0]}/${frac[1]} =`;
-  return {text:txt, value};
+    const E = randDecFrac(-2.0,-1.0,[10,100]);
+    const fracMN = randNiceFrac(5,[5,10,20]);
+
+    const part1 = mulFrac(subFrac(A,B), subFrac(C,D));
+    const part2 = divFrac(E, fracMN);
+    const res = addFrac(part1, part2);
+
+    if(!isNiceResult(res)) continue;
+
+    const latex =
+      '\\left(' + texDec(A) + ' - ' + texDec(B) + '\\right) \\cdot ' +
+      '\\left(' + texDec(C) + ' - ' + texDec(D) + '\\right) + ' +
+      '\\left(' + texDec(E) + '\\right) : ' + texFrac(fracMN);
+
+    return { latex, frac: res };
+  }
 }
+
+/* TYPE 3: (−p/q) · r/s + (dec) · t/u */
 function genType3(){
-  // (−p/q) · r/s + (dec) · t/u
-  const p = choice([3,4,5]);
-  const q = choice([5,6,9]);
-  const r = choice([2,3,4]);
-  const s = choice([5,6,8]);
-  const t = choice([1,2,3]);
-  const u = choice([3,4,5]);
-  const dec = -randDec10(0.4,1.2);
+  while(true){
+    const pOverQ = randNiceFrac(8,[2,4,5,8,10]);
+    const negPQ = makeFrac(-pOverQ.n, pOverQ.d);
+    const rOverS = randNiceFrac(6,[2,4,5,8,10]);
+    const tOverU = randNiceFrac(6,[2,4,5,8,10]);
+    const dec = randDecFrac(-1.2,-0.4,[10,100]);
 
-  const v1 = (-p/q)*(r/s);
-  const v2 = dec*(t/u);
-  const value = v1 + v2;
+    const part1 = mulFrac(negPQ, rOverS);
+    const part2 = mulFrac(dec, tOverU);
+    const res = addFrac(part1, part2);
 
-  const txt = `(${ -p }/${q}) · ${r}/${s} + (${fmtDec(dec)}) · ${t}/${u} =`;
-  return {text:txt, value};
+    if(!isNiceResult(res)) continue;
+
+    const latex =
+      texFracParen(negPQ) + ' \\cdot ' + texFrac(rOverS) +
+      ' + \\left(' + texDec(dec) + '\\right) \\cdot ' + texFracParen(tOverU);
+
+    return { latex, frac: res };
+  }
 }
+
+/* TYPE 4: (dec − 1/k) : ( f1 : f2 ) */
 function genType4(){
-  // (dec − 1/k) : ( (2/5) : (−1/3) )
-  const dec = randDec10(1.5,2.5);
-  const k = choice([4,5,8,10]);
-  const inner = (2/5) / (-1/3);
-  const value = (dec - 1/k) / inner;
+  while(true){
+    const dec = randDecFrac(1.5,2.5,[10]);
+    const k = choice([4,5,8,10]);
+    const oneOverK = makeFrac(1,k);
 
-  const txt = `(${fmtDec(dec)} − 1/${k}) : (2/5 : (−1/3)) =`;
-  return {text:txt, value};
+    const f1 = randNiceFrac(4,[2,4,5,10]);
+    const f2 = randNiceFrac(4,[2,4,5,10]);
+
+    const top = subFrac(dec, oneOverK);
+    const inner = divFrac(f1, f2);
+    const res = divFrac(top, inner);
+
+    if(!isNiceResult(res)) continue;
+
+    const latex =
+      '\\left(' + texDec(dec) + ' - ' + texFrac(oneOverK) + '\\right) : ' +
+      '\\left( ' + texFrac(f1) + ' : ' + texFrac(f2) + ' \\right)';
+
+    return { latex, frac: res };
+  }
 }
+
+/* TYPE 5: (−dec) · a/b + (−p/q) · c/d */
 function genType5(){
-  // (−dec) · 2/9 + (−p/q) · 18/12
-  const dec = randDec10(0.4,0.9);
-  const p = choice([4,5,7,8]);
-  const q = choice([6,9]);
-  const value = (-dec)*(2/9) + (-p/q)*(18/12);
-  const txt = `(${fmtDec(-dec)}) · 2/9 + (−${p}/${q}) · 18/12 =`;
-  return {text:txt, value};
-}
-function genType6(){
-  // (4/5 − dec) : ( (−2/3) : 3/5 )
-  const dec = randDec10(1.1,1.9);
-  const inner = (-2/3) / (3/5);
-  const value = (4/5 - dec) / inner;
-  const txt = `(4/5 − ${fmtDec(dec)}) : ((−2/3) : 3/5) =`;
-  return {text:txt, value};
+  while(true){
+    const decPos = randDecFrac(0.4,0.9,[10]);
+    const dec = makeFrac(-decPos.n, decPos.d);
+
+    const frac1 = randNiceFrac(4,[9,3,6,2,4,5]);
+    const frac2 = randNiceFrac(8,[6,9,12,4,8]);
+    const mult  = randNiceFrac(6,[4,6,8,12]);
+
+    const part1 = mulFrac(dec, frac1);
+    const negFrac2 = makeFrac(-frac2.n, frac2.d);
+    const part2 = mulFrac(negFrac2, mult);
+    const res = addFrac(part1, part2);
+
+    if(!isNiceResult(res)) continue;
+
+    const latex =
+      '\\left(' + texDec(dec) + '\\right) \\cdot ' + texFrac(frac1) +
+      ' + ' + texFracParen(negFrac2) + ' \\cdot ' + texFrac(mult);
+
+    return { latex, frac: res };
+  }
 }
 
-/* vygeneruj novou sadu 6 příkladů */
+/* TYPE 6: (fA − dec) : ( fB : fC ) */
+function genType6(){
+  while(true){
+    const fA = randNiceFrac(4,[4,5,8,10]);
+    const dec = randDecFrac(1.0,1.9,[10]);
+    const fB = randNiceFrac(4,[2,3,4,6]);
+    const fC = randNiceFrac(4,[3,4,5,6]);
+
+    const top = subFrac(fA, dec);
+    const inner = divFrac(fB, fC);
+    const res = divFrac(top, inner);
+
+    if(!isNiceResult(res)) continue;
+
+    const latex =
+      '\\left(' + texFrac(fA) + ' - ' + texDec(dec) + '\\right) : ' +
+      '\\left( ' + texFrac(fB) + ' : ' + texFrac(fC) + ' \\right)';
+
+    return { latex, frac: res };
+  }
+}
+
+/* 6 příkladů – každý typ jednou */
 function generateQuestions(){
   const gens = [genType1, genType2, genType3, genType4, genType5, genType6];
-  const qs = gens.map(g => {
+  return gens.map(g => {
     const q = g();
-    const fr = toFrac(q.value);
-    q.showDec = fmtDec(q.value);
-    q.showFrac = fracToString(fr);
-    return q;
+    const fr = q.frac;
+    return {
+      latex: q.latex + ' =',
+      frac: fr,
+      value: fracValue(fr),
+      dec: fmtDec(fracValue(fr))
+    };
   });
-  return qs;
 }
 
 /* ---------- stav ---------- */
+let roundNo = 1;
 let questions = generateQuestions();
 let index = 0;
 let correctCount = 0;
 let wrongCount = 0;
 let grannyCount = 0;
 let devilCount = 0;
+let streakConsec = 0;
 let roundFinished = false;
 
-const elQText = document.getElementById('qText');
+const elRoundNo = document.getElementById('roundNo');
+const elQText  = document.getElementById('qText');
 const elQIndex = document.getElementById('qIndex');
 const elQCorrect = document.getElementById('qCorrect');
-const elQWrong = document.getElementById('qWrong');
-const elStatus = document.getElementById('status');
+const elQWrong   = document.getElementById('qWrong');
+const elStatus   = document.getElementById('status');
 
 const elWhole = document.getElementById('answerWhole');
 const elFracWrap = document.getElementById('fracWrapper');
@@ -378,29 +501,29 @@ const elDen = document.getElementById('answerDen');
 
 const elBtnCheck = document.getElementById('btnCheck');
 const elBtnNext = document.getElementById('btnNext');
-const elBtnReset = document.getElementById('btnReset');
+const elBtnNextRound = document.getElementById('btnNextRound');
+const elBtnResetAll = document.getElementById('btnResetAll');
 const elKbd = document.getElementById('kbd');
 
 const elGrannyCount = document.getElementById('grannyCount');
-const elDevilCount = document.getElementById('devilCount');
+const elDevilCount  = document.getElementById('devilCount');
 
 let fractionMode = false;
 let activeInput = elWhole;
 
-/* ---------- UI / status ---------- */
-function showQuestion(){
-  const q = questions[index];
-  elQText.textContent = q.text;
-  elQIndex.textContent = String(index+1);
-  clearAnswer();
-  setStatus("");
+/* ---------- UI / MathJax ---------- */
+function typeset(el){
+  if(window.MathJax && MathJax.typesetPromise){
+    MathJax.typesetPromise([el]).catch(()=>{});
+  }
 }
 
-function setStatus(msg, kind){
-  elStatus.textContent = msg;
+function setStatus(msg, kind, isTeX){
   elStatus.className = "status";
   if(kind === "ok") elStatus.classList.add("ok");
   if(kind === "bad") elStatus.classList.add("bad");
+  elStatus.innerHTML = isTeX ? msg : msg.replace(/</g,"&lt;");
+  typeset(elStatus);
 }
 
 function clearAnswer(){
@@ -414,6 +537,16 @@ function clearAnswer(){
   elBtnNext.disabled = true;
   elBtnCheck.disabled = false;
   elWhole.focus();
+}
+
+function showQuestion(){
+  const q = questions[index];
+  elQIndex.textContent = String(index+1);
+  elQText.innerHTML = '\\(' + q.latex + '\\)';
+  typeset(elQText);
+  clearAnswer();
+  setStatus("", null, false);
+  roundFinished = false;
 }
 
 /* ---------- čtení odpovědi ---------- */
@@ -437,17 +570,17 @@ function getUserValue(){
 }
 
 /* ---------- kontrola ---------- */
-function finishRoundOnce(){
-  if(roundFinished) return;
-  roundFinished = true;
-  grannyCount++;
-  elGrannyCount.textContent = String(grannyCount);
+function addGrannyIfNeeded(){
+  if(streakConsec > 0 && streakConsec % 6 === 0){
+    grannyCount++;
+    elGrannyCount.textContent = String(grannyCount);
+  }
 }
 
 function checkAnswer(){
   const res = getUserValue();
   if(!res.ok){
-    setStatus(res.msg, "bad");
+    setStatus(res.msg, "bad", false);
     return;
   }
   const user = res.value;
@@ -457,26 +590,34 @@ function checkAnswer(){
   if(diff < 1e-6){
     correctCount++;
     elQCorrect.textContent = String(correctCount);
-    setStatus("Správně 👌", "ok");
+    streakConsec++;
+    addGrannyIfNeeded();
+    setStatus("Správně 👌", "ok", false);
   }else{
     wrongCount++;
     devilCount++;
     elQWrong.textContent = String(wrongCount);
     elDevilCount.textContent = String(devilCount);
-    const q = questions[index];
-    setStatus("Špatně. Správný výsledek je "+q.showDec+" = "+q.showFrac+".", "bad");
-  }
+    streakConsec = 0;
 
-  // po 6. příkladu – odměna babička
-  if(index === questions.length-1){
-    finishRoundOnce();
+    const fr = questions[index].frac;
+    const tex = 'Špatně. Správný výsledek je \\( ' +
+      fmtDec(correct) + ' = ' + texFrac(fr) + ' \\).';
+    setStatus(tex, "bad", true);
   }
 
   elBtnCheck.disabled = true;
-  elBtnNext.disabled = (index >= questions.length-1);
+
+  if(index >= questions.length-1){
+    elBtnNext.disabled = true;
+    elBtnNextRound.disabled = false;
+    roundFinished = true;
+  }else{
+    elBtnNext.disabled = false;
+  }
 }
 
-/* ---------- další / reset ---------- */
+/* ---------- další / kola / reset ---------- */
 function nextQuestion(){
   if(index < questions.length-1){
     index++;
@@ -487,21 +628,36 @@ function nextQuestion(){
   }
 }
 
+function startNextRound(){
+  if(!roundFinished) return;
+  roundNo++;
+  elRoundNo.textContent = String(roundNo);
+  questions = generateQuestions();
+  index = 0;
+  elBtnNextRound.disabled = true;
+  showQuestion();
+}
+
 function resetAll(){
+  roundNo = 1;
   questions = generateQuestions();
   index = 0;
   correctCount = 0;
-  wrongCount = 0;
-  roundFinished = false;
+  wrongCount  = 0;
+  grannyCount = 0;
+  devilCount  = 0;
+  streakConsec = 0;
+  elRoundNo.textContent = "1";
   elQCorrect.textContent = "0";
-  elQWrong.textContent = "0";
+  elQWrong.textContent   = "0";
+  elGrannyCount.textContent = "0";
+  elDevilCount.textContent  = "0";
+  elBtnNextRound.disabled = true;
   showQuestion();
 }
 
 /* ---------- klávesnice ---------- */
-function setActive(input){
-  activeInput = input;
-}
+function setActive(input){ activeInput = input; }
 elWhole.addEventListener('focus', ()=>setActive(elWhole));
 elNum.addEventListener('focus', ()=>setActive(elNum));
 elDen.addEventListener('focus', ()=>setActive(elDen));
@@ -534,11 +690,9 @@ function handleKey(key){
   }
 
   let v = activeInput.value;
-  if(key === "-"){
-    if(v.includes("-")) return;
-    if(v.trim().length === 0){
-      activeInput.value = "-";
-    }
+  if(key === "neg"){
+    if(v.startsWith("-")) return;
+    activeInput.value = v ? "-" + v : "-";
     activeInput.focus();
     return;
   }
@@ -574,7 +728,8 @@ document.addEventListener('keydown', e=>{
 /* ---------- tlačítka ---------- */
 elBtnCheck.addEventListener('click', checkAnswer);
 elBtnNext.addEventListener('click', nextQuestion);
-elBtnReset.addEventListener('click', resetAll);
+elBtnNextRound.addEventListener('click', startNextRound);
+elBtnResetAll.addEventListener('click', resetAll);
 
 /* start */
 showQuestion();
