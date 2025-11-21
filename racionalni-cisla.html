@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Racionální čísla – 6 příkladů</title>
+<title>Racionální čísla – 6 náhodných příkladů</title>
 <meta name="theme-color" content="#0b1323" />
 <style>
   :root{
@@ -126,16 +126,42 @@
     gap:10px;
     flex-wrap:wrap;
   }
+
+  /* Odměny – babičky a čertíci */
+  .icons-wrap{
+    position:fixed;
+    top:8px;
+    right:10px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    z-index:10;
+    font-size:18px;
+  }
+  .icons-line{
+    display:flex;
+    gap:4px;
+    align-items:center;
+  }
 </style>
 </head>
 <body>
+<div class="icons-wrap">
+  <div class="icons-line">
+    👵 <span id="grannyCount">0</span>
+  </div>
+  <div class="icons-line">
+    😈 <span id="devilCount">0</span>
+  </div>
+</div>
+
 <div class="app">
   <header>
     <div class="tag">Příklad <span id="qIndex">1</span> / 6</div>
     <div class="tag">Správných: <span id="qCorrect">0</span></div>
     <div class="tag">Špatných: <span id="qWrong">0</span></div>
     <div style="flex:1"></div>
-    <button class="btn" id="btnReset">Reset</button>
+    <button class="btn" id="btnReset">Nová šestice</button>
   </header>
 
   <section class="panel">
@@ -187,50 +213,157 @@
 </div>
 
 <script>
-/* ---------- data příkladů ---------- */
-const questions = [
-  {
-    text: "[0,35 : 1/2 + (−0,36) : (−1,2) − 10] · 2/5 =",
-    value: -18/5,
-    showDec: "-3,6",
-    showFrac: "−18/5"
-  },
-  {
-    text: "(4,9 − 3,6) · (9,1 − 11) + (−1,44) : 6/5 =",
-    value: -367/100,
-    showDec: "-3,67",
-    showFrac: "−367/100"
-  },
-  {
-    text: "(−15/9) · 18/25 + (−0,4) · 2/3 =",
-    value: -22/15,
-    showDec: "-1,466666…",
-    showFrac: "−22/15"
-  },
-  {
-    text: "(1,8 − 1/20) : (2/5 : −1/3) =",
-    value: -35/24,
-    showDec: "-1,458333…",
-    showFrac: "−35/24"
-  },
-  {
-    text: "(−0,6) · 2/9 + (−16/9) · 18/12 =",
-    value: -14/5,
-    showDec: "-2,8",
-    showFrac: "−14/5"
-  },
-  {
-    text: "(4/5 − 1,6) : (−2/3 : 3/5) =",
-    value: 18/25,
-    showDec: "0,72",
-    showFrac: "18/25"
+/* ---------- pomocné funkce pro čísla ---------- */
+function randInt(min, max){
+  return Math.floor(Math.random()*(max-min+1))+min;
+}
+function choice(arr){
+  return arr[Math.floor(Math.random()*arr.length)];
+}
+function gcd(a,b){
+  a=Math.abs(a); b=Math.abs(b);
+  while(b){ let t=a%b; a=b; b=t; }
+  return a||1;
+}
+function fmtDec(x){
+  // dvě desetinná místa, ořezání nul
+  let s = x.toFixed(2);
+  s = s.replace('.', ',');
+  // ořízni zbytečné nuly
+  if(s.includes(',')){
+    s = s.replace(/0+$/,'').replace(/,$/,'');
   }
-];
+  return s;
+}
+function toFrac(x){
+  const sign = x<0 ? -1 : 1;
+  x = Math.abs(x);
+  let bestN = 0, bestD = 1, bestErr = 1e9;
+  for(let d=1; d<=30; d++){
+    let n = Math.round(x*d);
+    let val = n/d;
+    let err = Math.abs(val-x);
+    if(err < bestErr-1e-10){
+      bestErr = err;
+      bestN = n; bestD = d;
+    }
+  }
+  bestN *= sign;
+  const g = gcd(bestN,bestD);
+  bestN /= g; bestD /= g;
+  return {n:bestN, d:bestD};
+}
+function fracToString(fr){
+  const n = fr.n, d = fr.d;
+  if(d===1) return String(n);
+  return (n<0 ? '−' + Math.abs(n) : String(n)) + '/' + d;
+}
+
+/* ---------- generátory 6 typů příkladů ---------- */
+// číslo s jedním desetinným místem 0,2 až 9,9
+function randDec10(min, max){
+  const k = randInt(min*10, max*10);
+  return k/10;
+}
+// číslo se dvěma desetinnými místy
+function randDec100(min, max){
+  const k = randInt(min*100, max*100);
+  return k/100;
+}
+function genType1(){
+  // [a : 1/2 + b : c − d] · e
+  const a = randDec100(0.2,0.8);
+  const b = -randDec100(0.2,0.7);
+  const c = -randDec10(0.8,1.5);
+  const d = randInt(5,12);
+  const frac = choice([[2,5],[3,5],[3,4]]);
+  const e = frac[0]/frac[1];
+
+  const value = ((a/0.5) + (b/c) - d) * e;
+
+  const txt = `[${fmtDec(a)} : 1/2 + (${fmtDec(b)}) : (${fmtDec(c)}) − ${d}] · ${frac[0]}/${frac[1]} =`;
+  return {text:txt, value};
+}
+function genType2(){
+  // (A−B) · (C−D) + E : (m/n)
+  const A = randDec10(3,7);
+  const B = randDec10(1,3);
+  const C = randDec10(7,10);
+  const D = randDec10(9,12);
+  const E = -randDec100(1.0,2.0);
+  const frac = choice([[3,5],[4,5],[5,6]]);
+  const F = frac[0]/frac[1];
+
+  const value = (A-B)*(C-D) + E/F;
+  const txt = `(${fmtDec(A)} − ${fmtDec(B)}) · (${fmtDec(C)} − ${fmtDec(D)}) + (${fmtDec(E)}) : ${frac[0]}/${frac[1]} =`;
+  return {text:txt, value};
+}
+function genType3(){
+  // (−p/q) · r/s + (dec) · t/u
+  const p = choice([3,4,5]);
+  const q = choice([5,6,9]);
+  const r = choice([2,3,4]);
+  const s = choice([5,6,8]);
+  const t = choice([1,2,3]);
+  const u = choice([3,4,5]);
+  const dec = -randDec10(0.4,1.2);
+
+  const v1 = (-p/q)*(r/s);
+  const v2 = dec*(t/u);
+  const value = v1 + v2;
+
+  const txt = `(${ -p }/${q}) · ${r}/${s} + (${fmtDec(dec)}) · ${t}/${u} =`;
+  return {text:txt, value};
+}
+function genType4(){
+  // (dec − 1/k) : ( (2/5) : (−1/3) )
+  const dec = randDec10(1.5,2.5);
+  const k = choice([4,5,8,10]);
+  const inner = (2/5) / (-1/3);
+  const value = (dec - 1/k) / inner;
+
+  const txt = `(${fmtDec(dec)} − 1/${k}) : (2/5 : (−1/3)) =`;
+  return {text:txt, value};
+}
+function genType5(){
+  // (−dec) · 2/9 + (−p/q) · 18/12
+  const dec = randDec10(0.4,0.9);
+  const p = choice([4,5,7,8]);
+  const q = choice([6,9]);
+  const value = (-dec)*(2/9) + (-p/q)*(18/12);
+  const txt = `(${fmtDec(-dec)}) · 2/9 + (−${p}/${q}) · 18/12 =`;
+  return {text:txt, value};
+}
+function genType6(){
+  // (4/5 − dec) : ( (−2/3) : 3/5 )
+  const dec = randDec10(1.1,1.9);
+  const inner = (-2/3) / (3/5);
+  const value = (4/5 - dec) / inner;
+  const txt = `(4/5 − ${fmtDec(dec)}) : ((−2/3) : 3/5) =`;
+  return {text:txt, value};
+}
+
+/* vygeneruj novou sadu 6 příkladů */
+function generateQuestions(){
+  const gens = [genType1, genType2, genType3, genType4, genType5, genType6];
+  const qs = gens.map(g => {
+    const q = g();
+    const fr = toFrac(q.value);
+    q.showDec = fmtDec(q.value);
+    q.showFrac = fracToString(fr);
+    return q;
+  });
+  return qs;
+}
 
 /* ---------- stav ---------- */
+let questions = generateQuestions();
 let index = 0;
 let correctCount = 0;
 let wrongCount = 0;
+let grannyCount = 0;
+let devilCount = 0;
+let roundFinished = false;
 
 const elQText = document.getElementById('qText');
 const elQIndex = document.getElementById('qIndex');
@@ -248,11 +381,13 @@ const elBtnNext = document.getElementById('btnNext');
 const elBtnReset = document.getElementById('btnReset');
 const elKbd = document.getElementById('kbd');
 
+const elGrannyCount = document.getElementById('grannyCount');
+const elDevilCount = document.getElementById('devilCount');
+
 let fractionMode = false;
 let activeInput = elWhole;
 
-/* ---------- pomocné funkce ---------- */
-
+/* ---------- UI / status ---------- */
 function showQuestion(){
   const q = questions[index];
   elQText.textContent = q.text;
@@ -281,14 +416,13 @@ function clearAnswer(){
   elWhole.focus();
 }
 
+/* ---------- čtení odpovědi ---------- */
 function parseNumber(str){
   const s = str.replace(',', '.').trim();
   if(!s) return null;
   const n = Number(s);
   return Number.isFinite(n) ? n : null;
 }
-
-/* zjištění hodnoty z aktuální kolonky / zlomku */
 function getUserValue(){
   if(fractionMode){
     const a = parseNumber(elNum.value);
@@ -302,7 +436,14 @@ function getUserValue(){
   }
 }
 
-/* ---------- ověřování ---------- */
+/* ---------- kontrola ---------- */
+function finishRoundOnce(){
+  if(roundFinished) return;
+  roundFinished = true;
+  grannyCount++;
+  elGrannyCount.textContent = String(grannyCount);
+}
+
 function checkAnswer(){
   const res = getUserValue();
   if(!res.ok){
@@ -319,9 +460,16 @@ function checkAnswer(){
     setStatus("Správně 👌", "ok");
   }else{
     wrongCount++;
+    devilCount++;
     elQWrong.textContent = String(wrongCount);
+    elDevilCount.textContent = String(devilCount);
     const q = questions[index];
     setStatus("Špatně. Správný výsledek je "+q.showDec+" = "+q.showFrac+".", "bad");
+  }
+
+  // po 6. příkladu – odměna babička
+  if(index === questions.length-1){
+    finishRoundOnce();
   }
 
   elBtnCheck.disabled = true;
@@ -340,9 +488,11 @@ function nextQuestion(){
 }
 
 function resetAll(){
+  questions = generateQuestions();
   index = 0;
   correctCount = 0;
   wrongCount = 0;
+  roundFinished = false;
   elQCorrect.textContent = "0";
   elQWrong.textContent = "0";
   showQuestion();
@@ -352,47 +502,38 @@ function resetAll(){
 function setActive(input){
   activeInput = input;
 }
-
 elWhole.addEventListener('focus', ()=>setActive(elWhole));
 elNum.addEventListener('focus', ()=>setActive(elNum));
 elDen.addEventListener('focus', ()=>setActive(elDen));
 
 function handleKey(key){
   if(key === "frac"){
-    const hadMode = fractionMode;
-
     if(!fractionMode){
       fractionMode = true;
       elWhole.style.display = "none";
       elFracWrap.style.display = "inline-flex";
-      // přenes číslo z jedné kolonky do čitatele (pokud tam něco je)
       if(elWhole.value.trim()){
         elNum.value = elWhole.value;
       }
       activeInput = elNum.value.trim() ? elDen : elNum;
     }else{
-      // v režimu zlomku – přeskakuj mezi čitatelem a jmenovatelem
       activeInput = (activeInput === elNum ? elDen : elNum);
     }
-    if(activeInput) activeInput.focus();
+    activeInput.focus();
     return;
   }
-
   if(key === "clear"){
     activeInput.value = "";
     activeInput.focus();
     return;
   }
-
   if(key === "back"){
     activeInput.value = activeInput.value.slice(0,-1);
     activeInput.focus();
     return;
   }
 
-  // číslice, minus, čárka
   let v = activeInput.value;
-
   if(key === "-"){
     if(v.includes("-")) return;
     if(v.trim().length === 0){
@@ -401,7 +542,6 @@ function handleKey(key){
     activeInput.focus();
     return;
   }
-
   if(key === ","){
     if(v.includes(",") || v.includes(".")) return;
     if(!v) v = "0";
@@ -409,8 +549,6 @@ function handleKey(key){
     activeInput.focus();
     return;
   }
-
-  // číslice
   if(/[0-9]/.test(key)){
     activeInput.value += key;
     activeInput.focus();
