@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Racionální čísla – 6 příkladů</title>
+<meta name="theme-color" content="#0b1323" />
+<style>
+  :root{
+    --bg:#0b1323; --panel:#0f1729; --text:#e6eef8; --muted:#9fb0c7; --accent:#60a5fa;
+    --ok:#22c55e; --wrong:#ef4444; --card:#101826;
+  }
+  *{box-sizing:border-box}
+  html,body{
+    height:100%;margin:0;
+    background:linear-gradient(180deg,var(--bg),#0d1528);
+    color:var(--text);
+    font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif
+  }
+  .app{max-width:min(800px,96vw);margin:24px auto;padding:16px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+  .tag{
+    padding:4px 10px;
+    border-radius:999px;
+    border:1px solid #233152;
+    color:var(--muted);
+    font-size:13px;
+  }
+  .btn{
+    appearance:none;border:1px solid #25324f;background:#15203a;
+    color:var(--text);padding:8px 14px;border-radius:12px;cursor:pointer;
+    font-size:14px;
+  }
+  .btn.primary{border-color:#245bb5;background:#1b3b70}
+  .btn:disabled{opacity:.5;cursor:default}
+  .panel{
+    background:var(--panel);
+    border-radius:18px;
+    border:1px solid #1b2946;
+    padding:16px;
+  }
+  .qtext{
+    font-size:24px;
+    line-height:1.3;
+    margin-bottom:12px;
+  }
+  .status{
+    font-size:14px;
+    color:var(--muted);
+    min-height:1.5em;
+  }
+  .status.ok{color:var(--ok)}
+  .status.bad{color:var(--wrong)}
+  .answer-area{
+    margin:10px 0 4px;
+  }
+
+  /* Jednoduché pole pro "desetinný" režim */
+  .whole-input{
+    padding:8px 10px;
+    border-radius:10px;
+    border:1px solid #243356;
+    background:#0f1729;
+    color:var(--text);
+    font-size:18px;
+    width:160px;
+  }
+  .whole-input:focus{outline:none;border-color:var(--accent)}
+
+  /* Zlomek – dvě kolonky a čára */
+  .frac-wrapper{
+    display:none;
+    align-items:center;
+    justify-content:flex-start;
+    gap:6px;
+  }
+  .frac-box{
+    display:inline-flex;
+    flex-direction:column;
+    align-items:stretch;
+    justify-content:center;
+  }
+  .frac-input{
+    width:120px;
+    padding:4px 8px;
+    border-radius:6px;
+    border:1px solid #243356;
+    background:#0f1729;
+    color:var(--text);
+    font-size:16px;
+    text-align:center;
+  }
+  .frac-input:focus{outline:none;border-color:var(--accent)}
+  .frac-bar{
+    height:1px;
+    background:#e5e7eb;
+    margin:3px 0;
+  }
+
+  /* Klávesnice */
+  .kbd{
+    margin-top:10px;
+    display:grid;
+    grid-template-columns:repeat(4, minmax(0,1fr));
+    gap:6px;
+  }
+  .kbd button{
+    padding:10px 0;
+    font-size:18px;
+    border-radius:10px;
+    border:1px solid #243356;
+    background:#101826;
+    color:var(--text);
+    cursor:pointer;
+  }
+  .kbd button:hover{background:#18233e}
+  .kbd button.k-wide{
+    grid-column:span 2;
+  }
+
+  .bottom-bar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:12px;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="tag">Příklad <span id="qIndex">1</span> / 6</div>
+    <div class="tag">Správných: <span id="qCorrect">0</span></div>
+    <div class="tag">Špatných: <span id="qWrong">0</span></div>
+    <div style="flex:1"></div>
+    <button class="btn" id="btnReset">Reset</button>
+  </header>
+
+  <section class="panel">
+    <div class="qtext" id="qText"></div>
+
+    <div class="answer-area">
+      <!-- jedna kolonka -->
+      <input id="answerWhole" class="whole-input" autocomplete="off" inputmode="decimal" />
+      <!-- zlomek -->
+      <div id="fracWrapper" class="frac-wrapper">
+        <span>=</span>
+        <div class="frac-box">
+          <input id="answerNum" class="frac-input" autocomplete="off" inputmode="numeric" />
+          <div class="frac-bar"></div>
+          <input id="answerDen" class="frac-input" autocomplete="off" inputmode="numeric" />
+        </div>
+      </div>
+    </div>
+
+    <div class="kbd" id="kbd">
+      <button data-key="7">7</button>
+      <button data-key="8">8</button>
+      <button data-key="9">9</button>
+      <button data-key="back">←</button>
+
+      <button data-key="4">4</button>
+      <button data-key="5">5</button>
+      <button data-key="6">6</button>
+      <button data-key="clear">C</button>
+
+      <button data-key="1">1</button>
+      <button data-key="2">2</button>
+      <button data-key="3">3</button>
+      <button data-key="-">−</button>
+
+      <button data-key="0">0</button>
+      <button data-key=",">,</button>
+      <button class="k-wide" data-key="frac">zlomková čára</button>
+    </div>
+
+    <div class="bottom-bar">
+      <div>
+        <button class="btn primary" id="btnCheck">Ověřit výsledek</button>
+        <button class="btn" id="btnNext" disabled>Další příklad</button>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ---------- data příkladů ---------- */
+const questions = [
+  {
+    text: "[0,35 : 1/2 + (−0,36) : (−1,2) − 10] · 2/5 =",
+    value: -18/5,
+    showDec: "-3,6",
+    showFrac: "−18/5"
+  },
+  {
+    text: "(4,9 − 3,6) · (9,1 − 11) + (−1,44) : 6/5 =",
+    value: -367/100,
+    showDec: "-3,67",
+    showFrac: "−367/100"
+  },
+  {
+    text: "(−15/9) · 18/25 + (−0,4) · 2/3 =",
+    value: -22/15,
+    showDec: "-1,466666…",
+    showFrac: "−22/15"
+  },
+  {
+    text: "(1,8 − 1/20) : (2/5 : −1/3) =",
+    value: -35/24,
+    showDec: "-1,458333…",
+    showFrac: "−35/24"
+  },
+  {
+    text: "(−0,6) · 2/9 + (−16/9) · 18/12 =",
+    value: -14/5,
+    showDec: "-2,8",
+    showFrac: "−14/5"
+  },
+  {
+    text: "(4/5 − 1,6) : (−2/3 : 3/5) =",
+    value: 18/25,
+    showDec: "0,72",
+    showFrac: "18/25"
+  }
+];
+
+/* ---------- stav ---------- */
+let index = 0;
+let correctCount = 0;
+let wrongCount = 0;
+
+const elQText = document.getElementById('qText');
+const elQIndex = document.getElementById('qIndex');
+const elQCorrect = document.getElementById('qCorrect');
+const elQWrong = document.getElementById('qWrong');
+const elStatus = document.getElementById('status');
+
+const elWhole = document.getElementById('answerWhole');
+const elFracWrap = document.getElementById('fracWrapper');
+const elNum = document.getElementById('answerNum');
+const elDen = document.getElementById('answerDen');
+
+const elBtnCheck = document.getElementById('btnCheck');
+const elBtnNext = document.getElementById('btnNext');
+const elBtnReset = document.getElementById('btnReset');
+const elKbd = document.getElementById('kbd');
+
+let fractionMode = false;
+let activeInput = elWhole;
+
+/* ---------- pomocné funkce ---------- */
+
+function showQuestion(){
+  const q = questions[index];
+  elQText.textContent = q.text;
+  elQIndex.textContent = String(index+1);
+  clearAnswer();
+  setStatus("");
+}
+
+function setStatus(msg, kind){
+  elStatus.textContent = msg;
+  elStatus.className = "status";
+  if(kind === "ok") elStatus.classList.add("ok");
+  if(kind === "bad") elStatus.classList.add("bad");
+}
+
+function clearAnswer(){
+  elWhole.value = "";
+  elNum.value = "";
+  elDen.value = "";
+  fractionMode = false;
+  elWhole.style.display = "inline-block";
+  elFracWrap.style.display = "none";
+  activeInput = elWhole;
+  elBtnNext.disabled = true;
+  elBtnCheck.disabled = false;
+  elWhole.focus();
+}
+
+function parseNumber(str){
+  const s = str.replace(',', '.').trim();
+  if(!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+/* zjištění hodnoty z aktuální kolonky / zlomku */
+function getUserValue(){
+  if(fractionMode){
+    const a = parseNumber(elNum.value);
+    const b = parseNumber(elDen.value);
+    if(a === null || b === null || b === 0) return {ok:false, msg:"Doplň čitatel i jmenovatel (jmenovatel nesmí být 0)."};
+    return {ok:true, value:a / b};
+  }else{
+    const a = parseNumber(elWhole.value);
+    if(a === null) return {ok:false, msg:"Zadej výsledek (desetinná čárka je , )."};
+    return {ok:true, value:a};
+  }
+}
+
+/* ---------- ověřování ---------- */
+function checkAnswer(){
+  const res = getUserValue();
+  if(!res.ok){
+    setStatus(res.msg, "bad");
+    return;
+  }
+  const user = res.value;
+  const correct = questions[index].value;
+  const diff = Math.abs(user - correct);
+
+  if(diff < 1e-6){
+    correctCount++;
+    elQCorrect.textContent = String(correctCount);
+    setStatus("Správně 👌", "ok");
+  }else{
+    wrongCount++;
+    elQWrong.textContent = String(wrongCount);
+    const q = questions[index];
+    setStatus("Špatně. Správný výsledek je "+q.showDec+" = "+q.showFrac+".", "bad");
+  }
+
+  elBtnCheck.disabled = true;
+  elBtnNext.disabled = (index >= questions.length-1);
+}
+
+/* ---------- další / reset ---------- */
+function nextQuestion(){
+  if(index < questions.length-1){
+    index++;
+    showQuestion();
+  }
+  if(index >= questions.length-1){
+    elBtnNext.disabled = true;
+  }
+}
+
+function resetAll(){
+  index = 0;
+  correctCount = 0;
+  wrongCount = 0;
+  elQCorrect.textContent = "0";
+  elQWrong.textContent = "0";
+  showQuestion();
+}
+
+/* ---------- klávesnice ---------- */
+function setActive(input){
+  activeInput = input;
+}
+
+elWhole.addEventListener('focus', ()=>setActive(elWhole));
+elNum.addEventListener('focus', ()=>setActive(elNum));
+elDen.addEventListener('focus', ()=>setActive(elDen));
+
+function handleKey(key){
+  if(key === "frac"){
+    const hadMode = fractionMode;
+
+    if(!fractionMode){
+      fractionMode = true;
+      elWhole.style.display = "none";
+      elFracWrap.style.display = "inline-flex";
+      // přenes číslo z jedné kolonky do čitatele (pokud tam něco je)
+      if(elWhole.value.trim()){
+        elNum.value = elWhole.value;
+      }
+      activeInput = elNum.value.trim() ? elDen : elNum;
+    }else{
+      // v režimu zlomku – přeskakuj mezi čitatelem a jmenovatelem
+      activeInput = (activeInput === elNum ? elDen : elNum);
+    }
+    if(activeInput) activeInput.focus();
+    return;
+  }
+
+  if(key === "clear"){
+    activeInput.value = "";
+    activeInput.focus();
+    return;
+  }
+
+  if(key === "back"){
+    activeInput.value = activeInput.value.slice(0,-1);
+    activeInput.focus();
+    return;
+  }
+
+  // číslice, minus, čárka
+  let v = activeInput.value;
+
+  if(key === "-"){
+    if(v.includes("-")) return;
+    if(v.trim().length === 0){
+      activeInput.value = "-";
+    }
+    activeInput.focus();
+    return;
+  }
+
+  if(key === ","){
+    if(v.includes(",") || v.includes(".")) return;
+    if(!v) v = "0";
+    activeInput.value = v + ",";
+    activeInput.focus();
+    return;
+  }
+
+  // číslice
+  if(/[0-9]/.test(key)){
+    activeInput.value += key;
+    activeInput.focus();
+    return;
+  }
+}
+
+elKbd.addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-key]');
+  if(!btn) return;
+  const key = btn.getAttribute('data-key');
+  handleKey(key);
+});
+
+/* Enter = ověřit */
+document.addEventListener('keydown', e=>{
+  if(e.key === "Enter"){
+    e.preventDefault();
+    if(!elBtnCheck.disabled) checkAnswer();
+  }
+});
+
+/* ---------- tlačítka ---------- */
+elBtnCheck.addEventListener('click', checkAnswer);
+elBtnNext.addEventListener('click', nextQuestion);
+elBtnReset.addEventListener('click', resetAll);
+
+/* start */
+showQuestion();
+</script>
+</body>
+</html>
