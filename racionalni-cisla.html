@@ -234,21 +234,13 @@ function makeFrac(n,d){
   n = n/g; d = d/g;
   return {n,d};
 }
-function addFrac(a,b){
-  return makeFrac(a.n*b.d + b.n*a.d, a.d*b.d);
-}
-function subFrac(a,b){
-  return makeFrac(a.n*b.d - b.n*a.d, a.d*b.d);
-}
-function mulFrac(a,b){
-  return makeFrac(a.n*b.n, a.d*b.d);
-}
-function divFrac(a,b){
-  return makeFrac(a.n*b.d, a.d*b.n);
-}
+function addFrac(a,b){ return makeFrac(a.n*b.d + b.n*a.d, a.d*b.d); }
+function subFrac(a,b){ return makeFrac(a.n*b.d - b.n*a.d, a.d*b.d); }
+function mulFrac(a,b){ return makeFrac(a.n*b.n, a.d*b.d); }
+function divFrac(a,b){ return makeFrac(a.n*b.d, a.d*b.n); }
 function fracValue(fr){ return fr.n/fr.d; }
 
-/* "hezký" zlomek jako výsledek: |n|<=99, d<=99, d | 1000 */
+/* "hezký" výsledek: |n|<=99, d<=99, d | 1000 */
 function isNiceResult(fr){
   if(fr.d === 0) return false;
   const n = Math.abs(fr.n), d = Math.abs(fr.d);
@@ -267,20 +259,40 @@ function fmtDec(x){
   return s;
 }
 
-/* TeX pro zlomek:
-   - když d=1, vrací jen celé číslo
-   - jinak vrací \frac{n}{d} se správným znaménkem */
-function texFrac(fr){
+/* ---- TeX pro zlomky a desetinná čísla – záporné vždy v kulatých závorkách ---- */
+
+/* čistý zlomek se znaménkem, bez závorek */
+function texFracBare(fr){
   const n = fr.n, d = fr.d;
   if(d === 1) return String(n);
   if(n < 0) return '-\\frac{' + Math.abs(n) + '}{' + d + '}';
   return '\\frac{' + n + '}{' + d + '}';
 }
-function texFracParen(fr){
-  return '\\left(' + texFrac(fr) + '\\right)';
+
+/* zlomek jako atom – záporný vždy v ( ) */
+function texFrac(fr){
+  const base = texFracBare(fr);
+  if(fr.n < 0 && fr.d !== 1) return '\\left(' + base + '\\right)';
+  if(fr.n < 0 && fr.d === 1)  return '\\left(' + base + '\\right)';
+  return base;
 }
-function texDec(fr){
+
+/* explicitně závorkovaný zlomek – používáme tam, kde chceme určitě závorky */
+function texFracParen(fr){
+  return '\\left(' + texFracBare(fr) + '\\right)';
+}
+
+/* čistá desetinná podoba zlomku */
+function texDecBare(fr){
   return fmtDec(fracValue(fr));
+}
+
+/* desetinné číslo jako atom – záporné vždy v ( ) */
+function texDec(fr){
+  const v = fracValue(fr);
+  const s = texDecBare(fr);
+  if(v < 0) return '\\left(' + s + '\\right)';
+  return s;
 }
 
 /* náhodný desetinný zlomek – d=10 nebo 100 */
@@ -292,32 +304,34 @@ function randDecFrac(min, max, denChoices){
     if(nMin > nMax) continue;
     const n = randInt(nMin, nMax);
     const fr = makeFrac(n,d);
-    // nechceme n/d = 1, 2/2 apod.
-    if(Math.abs(fr.n) === fr.d) continue;
+    if(Math.abs(fr.n) === fr.d) continue;  // nechceme 1/1 apod.
     return fr;
   }
 }
 
-/* náhodný "hezký" zlomek – q jen z mocnin 2 a 5 */
+/* náhodný "hezký" zlomek – jmenovatel jen z {2,4,5,8,10,20} apod. */
 function randNiceFrac(numMax, denChoices){
   while(true){
     const d = choice(denChoices || [2,4,5,8,10,20]);
     let n = randInt(-numMax, numMax);
     if(n === 0) continue;
     const fr = makeFrac(n,d);
-    if(Math.abs(fr.n) === fr.d) continue; // nechceme 1/1, 2/2,...
-    if(Math.abs(fr.n) <= numMax && Math.abs(fr.d) <= 99) return fr;
+    if(Math.abs(fr.n) === fr.d) continue;
+    if(Math.abs(fracValue(fr)) > numMax) continue;
+    return fr;
   }
 }
 
-/* ---------- generátory 6 typů příkladů (pevná struktura A) ---------- */
+/* ---------- generátory 6 typů příkladů (pevná struktura) ---------- */
+/* guard = pojistka proti nekonečné smyčce */
 
-/* TYPE 1: [a : f1 + b : c − d] · e */
 function genType1(){
+  let guard = 0;
   while(true){
-    const a = randDecFrac(0.2, 0.8, [10,100]);
-    const b = randDecFrac(-0.7, -0.2, [10,100]);
-    const c = randDecFrac(-1.5, -0.8, [10,100]);
+    guard++; if(guard>2000) return {latex:'1+2', frac:makeFrac(3,1)};
+    const a = randDecFrac(0.2, 0.8, [10,100]);     // kladné
+    const b = randDecFrac(-0.7, -0.2, [10,100]);  // záporné
+    const c = randDecFrac(-1.5, -0.8, [10,100]);  // záporné
     const dInt = randInt(4,10);
     const d = makeFrac(dInt,1);
 
@@ -334,8 +348,8 @@ function genType1(){
 
     const latex =
       '\\big[ ' + texDec(a) + ' : ' + texFrac(f1) +
-      ' + \\left(' + texDec(b) + '\\right) : \\left(' + texDec(c) + '\\right) - ' +
-      dInt + ' \\big] \\cdot ' + texFrac(e);
+      ' + ' + texDec(b) + ' : ' + texDec(c) +
+      ' - ' + dInt + ' \\big] \\cdot ' + texFrac(e);
 
     return { latex, frac: res };
   }
@@ -343,7 +357,9 @@ function genType1(){
 
 /* TYPE 2: (A−B) · (C−D) + E : (m/n) */
 function genType2(){
+  let guard=0;
   while(true){
+    guard++; if(guard>2000) return {latex:'1+2', frac:makeFrac(3,1)};
     const A = randDecFrac(3.0,7.0,[10]);
     const B = randDecFrac(1.0,3.0,[10]);
     const C = randDecFrac(7.0,10.0,[10]);
@@ -361,7 +377,7 @@ function genType2(){
     const latex =
       '\\left(' + texDec(A) + ' - ' + texDec(B) + '\\right) \\cdot ' +
       '\\left(' + texDec(C) + ' - ' + texDec(D) + '\\right) + ' +
-      '\\left(' + texDec(E) + '\\right) : ' + texFrac(fracMN);
+      texDec(E) + ' : ' + texFrac(fracMN);
 
     return { latex, frac: res };
   }
@@ -369,7 +385,9 @@ function genType2(){
 
 /* TYPE 3: (−p/q) · r/s + (dec) · t/u */
 function genType3(){
+  let guard=0;
   while(true){
+    guard++; if(guard>2000) return {latex:'1+2', frac:makeFrac(3,1)};
     const pOverQ = randNiceFrac(8,[2,4,5,8,10]);
     const negPQ = makeFrac(-pOverQ.n, pOverQ.d);
     const rOverS = randNiceFrac(6,[2,4,5,8,10]);
@@ -384,7 +402,7 @@ function genType3(){
 
     const latex =
       texFracParen(negPQ) + ' \\cdot ' + texFrac(rOverS) +
-      ' + \\left(' + texDec(dec) + '\\right) \\cdot ' + texFracParen(tOverU);
+      ' + ' + texDec(dec) + ' \\cdot ' + texFracParen(tOverU);
 
     return { latex, frac: res };
   }
@@ -392,7 +410,9 @@ function genType3(){
 
 /* TYPE 4: (dec − 1/k) : ( f1 : f2 ) */
 function genType4(){
+  let guard=0;
   while(true){
+    guard++; if(guard>2000) return {latex:'1+2', frac:makeFrac(3,1)};
     const dec = randDecFrac(1.5,2.5,[10]);
     const k = choice([4,5,8,10]);
     const oneOverK = makeFrac(1,k);
@@ -416,7 +436,9 @@ function genType4(){
 
 /* TYPE 5: (−dec) · a/b + (−p/q) · c/d */
 function genType5(){
+  let guard=0;
   while(true){
+    guard++; if(guard>2000) return {latex:'1+2', frac:makeFrac(3,1)};
     const decPos = randDecFrac(0.4,0.9,[10]);
     const dec = makeFrac(-decPos.n, decPos.d);
 
@@ -432,7 +454,7 @@ function genType5(){
     if(!isNiceResult(res)) continue;
 
     const latex =
-      '\\left(' + texDec(dec) + '\\right) \\cdot ' + texFrac(frac1) +
+      texDec(dec) + ' \\cdot ' + texFrac(frac1) +
       ' + ' + texFracParen(negFrac2) + ' \\cdot ' + texFrac(mult);
 
     return { latex, frac: res };
@@ -441,7 +463,9 @@ function genType5(){
 
 /* TYPE 6: (fA − dec) : ( fB : fC ) */
 function genType6(){
+  let guard=0;
   while(true){
+    guard++; if(guard>2000) return {latex:'1+2', frac:makeFrac(3,1)};
     const fA = randNiceFrac(4,[4,5,8,10]);
     const dec = randDecFrac(1.0,1.9,[10]);
     const fB = randNiceFrac(4,[2,3,4,6]);
