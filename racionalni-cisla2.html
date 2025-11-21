@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Racionální čísla – mix obtížností</title>
+<meta name="theme-color" content="#0b1323" />
+<style>
+  :root{
+    --bg:#0b1323; --panel:#0f1729; --text:#e6eef8; --muted:#9fb0c7; --accent:#60a5fa;
+    --ok:#22c55e; --wrong:#ef4444; --card:#101826;
+  }
+  *{box-sizing:border-box}
+  html,body{
+    height:100%;margin:0;
+    background:linear-gradient(180deg,var(--bg),#0d1528);
+    color:var(--text);
+    font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif
+  }
+  .app{max-width:min(800px,96vw);margin:24px auto;padding:16px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+  .tag{
+    padding:4px 10px;
+    border-radius:999px;
+    border:1px solid #233152;
+    color:var(--muted);
+    font-size:13px;
+  }
+  .btn{
+    appearance:none;border:1px solid #25324f;background:#15203a;
+    color:var(--text);padding:8px 14px;border-radius:12px;cursor:pointer;
+    font-size:14px;
+  }
+  .btn.primary{border-color:#245bb5;background:#1b3b70}
+  .btn:disabled{opacity:.5;cursor:default}
+  .panel{
+    background:var(--panel);
+    border-radius:18px;
+    border:1px solid #1b2946;
+    padding:16px;
+  }
+  .qtext{
+    font-size:24px;
+    line-height:1.3;
+    margin-bottom:12px;
+    min-height:2em;
+  }
+  .status{
+    font-size:14px;
+    color:var(--muted);
+    min-height:1.5em;
+  }
+  .status.ok{color:var(--ok)}
+  .status.bad{color:var(--wrong)}
+  .answer-area{margin:10px 0 4px;}
+
+  .whole-input{
+    padding:8px 10px;
+    border-radius:10px;
+    border:1px solid #243356;
+    background:#0f1729;
+    color:var(--text);
+    font-size:18px;
+    width:160px;
+  }
+  .whole-input:focus{outline:none;border-color:var(--accent)}
+
+  .frac-wrapper{
+    display:none;
+    align-items:center;
+    justify-content:flex-start;
+    gap:6px;
+  }
+  .frac-box{
+    display:inline-flex;
+    flex-direction:column;
+    align-items:stretch;
+    justify-content:center;
+  }
+  .frac-input{
+    width:120px;
+    padding:4px 8px;
+    border-radius:6px;
+    border:1px solid #243356;
+    background:#0f1729;
+    color:var(--text);
+    font-size:16px;
+    text-align:center;
+  }
+  .frac-input:focus{outline:none;border-color:var(--accent)}
+  .frac-bar{
+    height:1px;
+    background:#e5e7eb;
+    margin:3px 0;
+  }
+
+  .kbd{
+    margin-top:10px;
+    display:grid;
+    grid-template-columns:repeat(4, minmax(0,1fr));
+    gap:6px;
+  }
+  .kbd button{
+    padding:10px 0;
+    font-size:18px;
+    border-radius:10px;
+    border:1px solid #243356;
+    background:#101826;
+    color:var(--text);
+    cursor:pointer;
+  }
+  .kbd button:hover{background:#18233e}
+  .kbd button.k-wide{grid-column:span 2;}
+
+  .bottom-bar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-top:12px;
+    gap:10px;
+    flex-wrap:wrap;
+  }
+
+  .icons-wrap{
+    position:fixed;
+    top:8px;
+    right:10px;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    z-index:10;
+    font-size:18px;
+  }
+  .icons-line{
+    display:flex;
+    gap:4px;
+    align-items:center;
+  }
+</style>
+
+<!-- MathJax -->
+<script id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+</script>
+</head>
+<body>
+<div class="icons-wrap">
+  <div class="icons-line">
+    👵 <span id="grannyCount">0</span>
+  </div>
+  <div class="icons-line">
+    😈 <span id="devilCount">0</span>
+  </div>
+</div>
+
+<div class="app">
+  <header>
+    <div class="tag">Kolo: <span id="roundNo">1</span></div>
+    <div class="tag">Příklad v kole: <span id="qIndex">1</span> / 6</div>
+    <div class="tag">Správných celkem: <span id="qCorrect">0</span></div>
+    <div class="tag">Špatných celkem: <span id="qWrong">0</span></div>
+    <div style="flex:1"></div>
+    <button class="btn" id="btnResetAll">Reset vše</button>
+  </header>
+
+  <section class="panel">
+    <div class="qtext" id="qText"></div>
+
+    <div class="answer-area">
+      <input id="answerWhole" class="whole-input" autocomplete="off" inputmode="decimal" />
+      <div id="fracWrapper" class="frac-wrapper">
+        <span>=</span>
+        <div class="frac-box">
+          <input id="answerNum" class="frac-input" autocomplete="off" inputmode="numeric" />
+          <div class="frac-bar"></div>
+          <input id="answerDen" class="frac-input" autocomplete="off" inputmode="numeric" />
+        </div>
+      </div>
+    </div>
+
+    <div class="kbd" id="kbd">
+      <button data-key="7">7</button>
+      <button data-key="8">8</button>
+      <button data-key="9">9</button>
+      <button data-key="back">←</button>
+
+      <button data-key="4">4</button>
+      <button data-key="5">5</button>
+      <button data-key="6">6</button>
+      <button data-key="clear">C</button>
+
+      <button data-key="1">1</button>
+      <button data-key="2">2</button>
+      <button data-key="3">3</button>
+      <button data-key="neg">−</button>
+
+      <button data-key="0">0</button>
+      <button data-key=",">,</button>
+      <button class="k-wide" data-key="frac">zlomková čára</button>
+    </div>
+
+    <div class="bottom-bar">
+      <div>
+        <button class="btn primary" id="btnCheck">Ověřit výsledek</button>
+        <button class="btn" id="btnNext" disabled>Další příklad</button>
+        <button class="btn" id="btnNextRound" disabled>Další kolo</button>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ---------- pomocné funkce pro zlomky ---------- */
+function randInt(min, max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function choice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function gcd(a,b){ a=Math.abs(a); b=Math.abs(b); while(b){ let t=a%b; a=b; b=t; } return a||1; }
+
+function makeFrac(n,d){
+  if(d === 0) return {n:1,d:0};
+  if(d < 0){ n=-n; d=-d; }
+  const g = gcd(n,d);
+  n /= g; d /= g;
+  return {n,d};
+}
+function addFrac(a,b){ return makeFrac(a.n*b.d + b.n*a.d, a.d*b.d); }
+function subFrac(a,b){ return makeFrac(a.n*b.d - b.n*a.d, a.d*b.d); }
+function mulFrac(a,b){ return makeFrac(a.n*b.n, a.d*b.d); }
+function divFrac(a,b){ return makeFrac(a.n*b.d, a.d*b.n); }
+function fracValue(fr){ return fr.n/fr.d; }
+
+/* hezký výsledek: |n|<=99, d<=99, d | 1000 */
+function isNiceResult(fr){
+  if(fr.d === 0) return false;
+  const n = Math.abs(fr.n), d = Math.abs(fr.d);
+  if(n > 99 || d > 99) return false;
+  if(1000 % d !== 0) return false;
+  if(Math.abs(fracValue(fr)) > 50) return false;
+  return true;
+}
+
+function fmtDec(x){
+  let s = x.toFixed(3);
+  s = s.replace('.', ',');
+  if(s.includes(',')){
+    s = s.replace(/0+$/,'').replace(/,$/,'');
+  }
+  return s;
+}
+
+/* TeX pro zlomek – bez 1/1 apod. (tam už máme celé číslo) */
+function texFrac(fr){
+  const n = fr.n, d = fr.d;
+  if(d === 1) return String(n);
+  if(n < 0) return '-\\dfrac{' + Math.abs(n) + '}{' + d + '}';
+  return '\\dfrac{' + n + '}{' + d + '}';
+}
+function texDecFromFrac(fr){
+  return fmtDec(fracValue(fr));
+}
+
+/* náhodný desetinný zlomek (den=10 nebo 100) s hodnotou cca (-absMax, absMax) */
+function randDecFrac(absMax){
+  while(true){
+    const d = choice([10,100]);
+    const n = randInt(-absMax*d, absMax*d);
+    if(n === 0) continue;
+    const fr = makeFrac(n,d);
+    if(Math.abs(fracValue(fr)) > absMax) continue;
+    return fr;
+  }
+}
+
+/* náhodný „hezký“ zlomek s d | 1000 a bez n/d = 1 */
+function randNiceFrac(numMax){
+  const dens = [2,4,5,8,10,20,25,40,50];
+  while(true){
+    const d = choice(dens);
+    let n = randInt(-numMax, numMax);
+    if(n === 0) continue;
+    const fr = makeFrac(n,d);
+    if(Math.abs(fr.n) === fr.d) continue;   // ne 1/1, -1/-1...
+    if(Math.abs(fracValue(fr)) > numMax) continue;
+    return fr;
+  }
+}
+
+/* z jednoho zlomku udělá atom – buď jako desetinné číslo, nebo jako zlomek.
+   Pokud je záporný, dá ho do kulatých závorek. */
+function atomFromFrac(fr, asDecimal){
+  const val = fracValue(fr);
+  const base = asDecimal ? texDecFromFrac(fr) : texFrac(fr);
+  if(val < 0){
+    return { frac: fr, tex: '\\left(' + base + '\\right)', hasNeg: true };
+  }else{
+    return { frac: fr, tex: base, hasNeg: false };
+  }
+}
+
+/* náhodný člen – někdy desetinné číslo, někdy zlomek */
+function randomTerm(){
+  const useDec = Math.random() < 0.5;
+  if(useDec){
+    const fr = randDecFrac(5); // hodnota v intervalu cca (-5,5)
+    return atomFromFrac(fr, true);
+  }else{
+    const fr = randNiceFrac(9);
+    return atomFromFrac(fr, false);
+  }
+}
+
+/* ---------- generátor výrazů podle obtížnosti ---------- */
+/*
+ obtížnost:
+   "easy"   – 3–4 čísla, 2–3 operace, mix ale převaha +/−
+   "medium" – 5–6 čísel, všechny 4 operace
+   "hard"   – 7–8 čísel, všechny 4 operace, občas dvojité závorky kolem celého výrazu
+*/
+
+function precedence(op){
+  if(op === '+' || op === '−') return 1;
+  return 2; // · nebo :
+}
+
+/* vygeneruje jednu úlohu {latex, frac} */
+function genExpression(diff){
+  const countMap = {
+    easy:   [3,4],
+    medium: [5,6],
+    hard:   [7,8]
+  };
+  const [minN, maxN] = countMap[diff];
+
+  while(true){
+    const nNums = randInt(minN, maxN);
+    const nOps  = nNums - 1;
+
+    const ops = [];
+    for(let i=0;i<nOps;i++){
+      if(diff === 'easy'){
+        const pool = ['+','+','+','−','−','·',':'];
+        ops.push(choice(pool));
+      }else{
+        const pool = ['+','−','·',':'];
+        ops.push(choice(pool));
+      }
+    }
+    if(diff !== 'easy'){
+      if(!ops.some(o => o==='·' || o===':')) continue; // aspoň jedno · nebo :
+    }
+
+    // první člen
+    let t0 = randomTerm();
+    let expr = { frac: t0.frac, tex: t0.tex, prec: 3, hasNeg: t0.hasNeg };
+
+    for(let i=0;i<nOps;i++){
+      const op = ops[i];
+      let term = randomTerm();
+      const pOp = precedence(op);
+
+      let newFrac;
+      if(op === '+') newFrac = addFrac(expr.frac, term.frac);
+      else if(op === '−') newFrac = subFrac(expr.frac, term.frac);
+      else if(op === '·') newFrac = mulFrac(expr.frac, term.frac);
+      else newFrac = divFrac(expr.frac, term.frac);
+
+      // TeX – závorky podle priority + typ závorky podle toho,
+      // jestli jsou uvnitř záporná čísla
+      let leftTex = expr.tex;
+      let leftHasNeg = expr.hasNeg;
+
+      if(pOp > expr.prec){
+        const wrap = leftHasNeg ? ['\\left[','\\right]'] : ['\\left(','\\right)'];
+        leftTex = wrap[0] + leftTex + wrap[1];
+      }
+
+      let rightTex = term.tex;
+      let opTex = op;
+      if(op === '·') opTex = '\\cdot';
+
+      const newTex = leftTex + ' ' + opTex + ' ' + rightTex;
+      const hasNeg = expr.hasNeg || term.hasNeg;
+
+      expr = { frac: newFrac, tex: newTex, prec: pOp, hasNeg };
+    }
+
+    if(!isNiceResult(expr.frac)) continue;
+
+    // u těžkých příkladů můžeme ještě celý výraz uzavřít do závorek
+    if(diff === 'hard' && Math.random() < 0.5){
+      const wrap = expr.hasNeg ? ['\\left[','\\right]'] : ['\\left(','\\right)'];
+      expr.tex = wrap[0] + expr.tex + wrap[1];
+      // a občas přidáme ještě jednu vrstvu
+      if(Math.random() < 0.3){
+        const wrap2 = expr.hasNeg ? ['\\left[','\\right]'] : ['\\left(','\\right)'];
+        expr.tex = wrap2[0] + expr.tex + wrap2[1];
+      }
+    }
+
+    const latex = expr.tex + ' =';
+    return { latex, frac: expr.frac };
+  }
+}
+
+/* vygeneruje 6 příkladů: 2 lehké, 2 střední, 2 těžké */
+function generateQuestions(){
+  const diffs = ['easy','easy','medium','medium','hard','hard'];
+  return diffs.map(d => {
+    const q = genExpression(d);
+    const fr = q.frac;
+    return {
+      latex: q.latex,
+      frac: fr,
+      value: fracValue(fr),
+      dec: fmtDec(fracValue(fr))
+    };
+  });
+}
+
+/* ---------- stav + UI ---------- */
+let roundNo = 1;
+let questions = generateQuestions();
+let index = 0;
+let correctCount = 0;
+let wrongCount = 0;
+let grannyCount = 0;
+let devilCount = 0;
+let streakConsec = 0;
+let roundFinished = false;
+
+const elRoundNo = document.getElementById('roundNo');
+const elQText  = document.getElementById('qText');
+const elQIndex = document.getElementById('qIndex');
+const elQCorrect = document.getElementById('qCorrect');
+const elQWrong   = document.getElementById('qWrong');
+const elStatus   = document.getElementById('status');
+
+const elWhole = document.getElementById('answerWhole');
+const elFracWrap = document.getElementById('fracWrapper');
+const elNum = document.getElementById('answerNum');
+const elDen = document.getElementById('answerDen');
+
+const elBtnCheck = document.getElementById('btnCheck');
+const elBtnNext = document.getElementById('btnNext');
+const elBtnNextRound = document.getElementById('btnNextRound');
+const elBtnResetAll = document.getElementById('btnResetAll');
+const elKbd = document.getElementById('kbd');
+
+const elGrannyCount = document.getElementById('grannyCount');
+const elDevilCount  = document.getElementById('devilCount');
+
+let fractionMode = false;
+let activeInput = elWhole;
+
+function typeset(el){
+  if(window.MathJax && MathJax.typesetPromise){
+    MathJax.typesetPromise([el]).catch(()=>{});
+  }
+}
+function setStatus(msg, kind, isTeX){
+  elStatus.className = "status";
+  if(kind === "ok") elStatus.classList.add("ok");
+  if(kind === "bad") elStatus.classList.add("bad");
+  elStatus.innerHTML = isTeX ? msg : msg.replace(/</g,"&lt;");
+  typeset(elStatus);
+}
+
+function clearAnswer(){
+  elWhole.value = "";
+  elNum.value = "";
+  elDen.value = "";
+  fractionMode = false;
+  elWhole.style.display = "inline-block";
+  elFracWrap.style.display = "none";
+  activeInput = elWhole;
+  elBtnNext.disabled = true;
+  elBtnCheck.disabled = false;
+  elWhole.focus();
+}
+
+function showQuestion(){
+  const q = questions[index];
+  elQIndex.textContent = String(index+1);
+  elQText.innerHTML = '\\(' + q.latex + '\\)';
+  typeset(elQText);
+  clearAnswer();
+  setStatus("", null, false);
+  roundFinished = false;
+}
+
+/* ---------- vstup od žáka ---------- */
+function parseNumber(str){
+  const s = str.replace(',', '.').trim();
+  if(!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+function getUserValue(){
+  if(fractionMode){
+    const a = parseNumber(elNum.value);
+    const b = parseNumber(elDen.value);
+    if(a === null || b === null || b === 0)
+      return {ok:false, msg:"Doplň čitatel i jmenovatel (jmenovatel nesmí být 0)."};
+    return {ok:true, value:a / b};
+  }else{
+    const a = parseNumber(elWhole.value);
+    if(a === null) return {ok:false, msg:"Zadej výsledek (desetinná čárka je , )."};
+    return {ok:true, value:a};
+  }
+}
+
+/* ---------- kontrola ---------- */
+function addGrannyIfNeeded(){
+  if(streakConsec > 0 && streakConsec % 6 === 0){
+    grannyCount++;
+    elGrannyCount.textContent = String(grannyCount);
+  }
+}
+
+function checkAnswer(){
+  const res = getUserValue();
+  if(!res.ok){
+    setStatus(res.msg, "bad", false);
+    return;
+  }
+  const user = res.value;
+  const correct = questions[index].value;
+  const diff = Math.abs(user - correct);
+
+  if(diff < 1e-6){
+    correctCount++;
+    elQCorrect.textContent = String(correctCount);
+    streakConsec++;
+    addGrannyIfNeeded();
+    setStatus("Správně 👌", "ok", false);
+  }else{
+    wrongCount++;
+    devilCount++;
+    elQWrong.textContent = String(wrongCount);
+    elDevilCount.textContent = String(devilCount);
+    streakConsec = 0;
+
+    const fr = questions[index].frac;
+    const tex = 'Špatně. Správný výsledek je \\( ' +
+      fmtDec(correct) + ' = ' + texFrac(fr) + ' \\).';
+    setStatus(tex, "bad", true);
+  }
+
+  elBtnCheck.disabled = true;
+
+  if(index >= questions.length-1){
+    elBtnNext.disabled = true;
+    elBtnNextRound.disabled = false;
+    roundFinished = true;
+  }else{
+    elBtnNext.disabled = false;
+  }
+}
+
+/* ---------- další / kola / reset ---------- */
+function nextQuestion(){
+  if(index < questions.length-1){
+    index++;
+    showQuestion();
+  }
+  if(index >= questions.length-1){
+    elBtnNext.disabled = true;
+  }
+}
+function startNextRound(){
+  if(!roundFinished) return;
+  roundNo++;
+  elRoundNo.textContent = String(roundNo);
+  questions = generateQuestions();
+  index = 0;
+  elBtnNextRound.disabled = true;
+  showQuestion();
+}
+function resetAll(){
+  roundNo = 1;
+  questions = generateQuestions();
+  index = 0;
+  correctCount = 0;
+  wrongCount  = 0;
+  grannyCount = 0;
+  devilCount  = 0;
+  streakConsec = 0;
+  elRoundNo.textContent = "1";
+  elQCorrect.textContent = "0";
+  elQWrong.textContent   = "0";
+  elGrannyCount.textContent = "0";
+  elDevilCount.textContent  = "0";
+  elBtnNextRound.disabled = true;
+  showQuestion();
+}
+
+/* ---------- klávesnice ---------- */
+function setActive(input){ activeInput = input; }
+elWhole.addEventListener('focus', ()=>setActive(elWhole));
+elNum.addEventListener('focus', ()=>setActive(elNum));
+elDen.addEventListener('focus', ()=>setActive(elDen));
+
+function handleKey(key){
+  if(key === "frac"){
+    if(!fractionMode){
+      fractionMode = true;
+      elWhole.style.display = "none";
+      elFracWrap.style.display = "inline-flex";
+      if(elWhole.value.trim()){
+        elNum.value = elWhole.value;
+      }
+      activeInput = elNum.value.trim() ? elDen : elNum;
+    }else{
+      activeInput = (activeInput === elNum ? elDen : elNum);
+    }
+    activeInput.focus();
+    return;
+  }
+  if(key === "clear"){
+    activeInput.value = "";
+    activeInput.focus();
+    return;
+  }
+  if(key === "back"){
+    activeInput.value = activeInput.value.slice(0,-1);
+    activeInput.focus();
+    return;
+  }
+
+  let v = activeInput.value;
+  if(key === "neg"){
+    if(v.startsWith("-")) return;
+    activeInput.value = v ? "-" + v : "-";
+    activeInput.focus();
+    return;
+  }
+  if(key === ","){
+    if(v.includes(",") || v.includes(".")) return;
+    if(!v) v = "0";
+    activeInput.value = v + ",";
+    activeInput.focus();
+    return;
+  }
+  if(/[0-9]/.test(key)){
+    activeInput.value += key;
+    activeInput.focus();
+    return;
+  }
+}
+
+elKbd.addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-key]');
+  if(!btn) return;
+  handleKey(btn.getAttribute('data-key'));
+});
+
+/* Enter = ověřit */
+document.addEventListener('keydown', e=>{
+  if(e.key === "Enter"){
+    e.preventDefault();
+    if(!elBtnCheck.disabled) checkAnswer();
+  }
+});
+
+/* tlačítka */
+elBtnCheck.addEventListener('click', checkAnswer);
+elBtnNext.addEventListener('click', nextQuestion);
+elBtnNextRound.addEventListener('click', startNextRound);
+elBtnResetAll.addEventListener('click', resetAll);
+
+/* start */
+showQuestion();
+</script>
+
+</body>
+</html>
