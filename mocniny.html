@@ -1,0 +1,1302 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes">
+  <title>Mocniny a odmocniny – dril</title>
+  <style>
+    :root{
+      --bg:#0b1220;
+      --panel:#101b33;
+      --card:#0f1a2f;
+      --ink:#eaf0ff;
+      --muted:#a8b4d6;
+      --accent:#7cc7ff;
+      --ok:#6ee7a8;
+      --bad:#ff7c7c;
+      --line:#243458;
+      --btn:#162447;
+      --btn2:#1b2c57;
+      --shadow: 0 14px 40px rgba(0,0,0,.35);
+      --radius:16px;
+      --radius2:22px;
+      --gap:14px;
+      --font: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:var(--font);
+      background: radial-gradient(1200px 700px at 20% 0%, #132450 0%, var(--bg) 50%, #070d18 100%);
+      color:var(--ink);
+    }
+
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 18px 14px 120px;
+    }
+
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding: 10px 6px 18px;
+    }
+    .title{
+      font-size: clamp(18px, 3vw, 26px);
+      font-weight: 800;
+      letter-spacing:.2px;
+    }
+    .pill{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      padding:10px 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.08);
+      color:var(--muted);
+      font-size: 13px;
+      white-space:nowrap;
+    }
+    .pill b{color:var(--ink)}
+    .grid{
+      display:grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap: var(--gap);
+    }
+    @media (max-width: 860px){
+      .grid{grid-template-columns:1fr}
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius2);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .cardHead{
+      padding: 14px 16px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .cardHead h2{
+      margin:0;
+      font-size: 16px;
+      letter-spacing:.2px;
+    }
+    .cardBody{padding: 14px 16px}
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    .muted{color:var(--muted)}
+    .small{font-size: 13px}
+    .btn{
+      border:1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      color:var(--ink);
+      padding:10px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      user-select:none;
+      font-weight:700;
+      letter-spacing:.2px;
+    }
+    .btn:hover{filter:brightness(1.08)}
+    .btn:active{transform: translateY(1px)}
+    .btnPrimary{
+      background: linear-gradient(180deg, rgba(124,199,255,.26), rgba(124,199,255,.10));
+      border-color: rgba(124,199,255,.35);
+    }
+    .btnGhost{
+      background: rgba(255,255,255,.03);
+    }
+    .btnBad{
+      background: linear-gradient(180deg, rgba(255,124,124,.22), rgba(255,124,124,.10));
+      border-color: rgba(255,124,124,.30);
+    }
+    .btnOk{
+      background: linear-gradient(180deg, rgba(110,231,168,.20), rgba(110,231,168,.08));
+      border-color: rgba(110,231,168,.28);
+    }
+
+    .seg{
+      display:flex;
+      gap:8px;
+      background: rgba(255,255,255,.04);
+      border:1px solid rgba(255,255,255,.08);
+      padding:6px;
+      border-radius: 999px;
+    }
+    .seg button{
+      border:0;
+      background:transparent;
+      color:var(--muted);
+      padding:10px 12px;
+      border-radius: 999px;
+      cursor:pointer;
+      font-weight:800;
+      letter-spacing:.2px;
+    }
+    .seg button.active{
+      background: rgba(124,199,255,.18);
+      color:var(--ink);
+    }
+
+    .types{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:10px;
+    }
+    .typeList{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 10px;
+    }
+    @media (max-width: 520px){
+      .typeList{grid-template-columns:1fr}
+    }
+    .chk{
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      padding:10px 10px;
+      border-radius: 14px;
+      background: rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.06);
+      cursor:pointer;
+    }
+    .chk:hover{filter:brightness(1.06)}
+    .chk input{margin-top:3px}
+    .chk .t{
+      font-weight:800;
+      margin-bottom: 2px;
+    }
+
+    /* PRACTICE */
+    .problemBox{
+      display:flex;
+      flex-direction:column;
+      gap: 12px;
+    }
+    .problem{
+      padding: 14px 14px;
+      border-radius: var(--radius);
+      background: rgba(0,0,0,.18);
+      border:1px solid rgba(255,255,255,.09);
+    }
+    .expr{
+      font-size: clamp(22px, 3.5vw, 34px);
+      font-weight: 900;
+      letter-spacing: .3px;
+      line-height: 1.15;
+      word-break: break-word;
+    }
+    .meta{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .badge{
+      padding:6px 10px;
+      border-radius: 999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+    }
+
+    .answerRow{
+      display:flex;
+      gap:10px;
+      align-items:stretch;
+      flex-wrap:wrap;
+    }
+    .inputWrap{
+      flex: 1 1 320px;
+      min-width: 240px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    input.answer{
+      width:100%;
+      padding: 12px 12px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.05);
+      color: var(--ink);
+      font-size: 18px;
+      outline:none;
+    }
+    input.answer:focus{
+      border-color: rgba(124,199,255,.50);
+      box-shadow: 0 0 0 3px rgba(124,199,255,.12);
+    }
+
+    .preview{
+      padding: 10px 12px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03);
+      color: var(--muted);
+      font-size: 14px;
+      min-height: 42px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    /* simple fraction rendering in preview */
+    .frac{
+      display:inline-grid;
+      grid-template-rows:auto auto;
+      align-items:center;
+      justify-items:center;
+      font-weight:800;
+      color: var(--ink);
+      line-height:1.05;
+      padding: 0 4px;
+    }
+    .frac .bar{
+      width:100%;
+      border-top: 2px solid rgba(234,240,255,.85);
+      margin: 2px 0 2px;
+    }
+    .sup{font-size:.78em; vertical-align: super; font-weight:900}
+    .rootSym{font-weight:900}
+
+    .status{
+      padding: 12px 12px;
+      border-radius: 14px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .status.ok{
+      border-color: rgba(110,231,168,.35);
+      background: rgba(110,231,168,.08);
+      color: var(--ok);
+      font-weight: 800;
+    }
+    .status.bad{
+      border-color: rgba(255,124,124,.38);
+      background: rgba(255,124,124,.08);
+      color: var(--bad);
+      font-weight: 800;
+    }
+
+    /* KEYBOARD */
+    .kbDock{
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+      background: rgba(6,10,20,.75);
+      backdrop-filter: blur(10px);
+      border-top: 1px solid rgba(255,255,255,.10);
+      display:none;
+      z-index: 50;
+    }
+    .kb{
+      max-width: 980px;
+      margin: 0 auto;
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+    }
+    .kbTop{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .kbGrid{
+      display:grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+    }
+    @media (max-width: 520px){
+      .kbGrid{grid-template-columns: repeat(5, 1fr);}
+    }
+    .kbtn{
+      border:1px solid rgba(255,255,255,.10);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      color: var(--ink);
+      padding: 12px 10px;
+      border-radius: 14px;
+      font-weight: 900;
+      font-size: 16px;
+      cursor:pointer;
+      user-select:none;
+      text-align:center;
+    }
+    .kbtn:active{transform: translateY(1px)}
+    .kbtn.alt{
+      background: linear-gradient(180deg, rgba(124,199,255,.20), rgba(124,199,255,.08));
+      border-color: rgba(124,199,255,.30);
+    }
+    .kbtn.warn{
+      background: linear-gradient(180deg, rgba(255,124,124,.18), rgba(255,124,124,.07));
+      border-color: rgba(255,124,124,.25);
+    }
+    .kbtn.wide{grid-column: span 2;}
+    .kbtn.wider{grid-column: span 3;}
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <div class="title">Mocniny a odmocniny – dril</div>
+      <div class="pill"><b id="pillMode">2. mocnina</b> <span>•</span> <span id="pillStats">0 správně / 0 celkem</span></div>
+    </header>
+
+    <div class="grid">
+      <!-- LEFT: SETUP -->
+      <section class="card" id="cardSetup">
+        <div class="cardHead">
+          <h2>Nastavení</h2>
+          <div class="row">
+            <button class="btn btnGhost" id="btnReset">Vynulovat skóre</button>
+          </div>
+        </div>
+        <div class="cardBody">
+          <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div class="muted small">Vyber, co procvičovat:</div>
+            <div class="seg" role="tablist" aria-label="Režim">
+              <button id="tabSquare" class="active" type="button">2. mocnina / √</button>
+              <button id="tabCube" type="button">3. mocnina / ∛</button>
+            </div>
+          </div>
+
+          <div class="types">
+            <div class="row" style="justify-content:space-between;align-items:center">
+              <div class="muted small">Typy příkladů (1–21). Můžeš označit více.</div>
+              <div class="row">
+                <button class="btn btnGhost" id="btnAll">Vše</button>
+                <button class="btn btnGhost" id="btnNone">Nic</button>
+                <button class="btn btnPrimary" id="btnMix">Mix</button>
+              </div>
+            </div>
+
+            <div class="typeList" id="typeList"></div>
+
+            <div class="row" style="margin-top:10px">
+              <button class="btn btnPrimary" id="btnStart">Start</button>
+              <span class="muted small">Tip: odpověď může být celé číslo, desetinné (čárka) nebo zlomek a/b.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: PRACTICE -->
+      <section class="card" id="cardPractice">
+        <div class="cardHead">
+          <h2>Procvičování</h2>
+          <div class="row">
+            <button class="btn btnGhost" id="btnBack">Zpět</button>
+          </div>
+        </div>
+        <div class="cardBody">
+          <div class="problemBox">
+            <div class="problem">
+              <div class="expr" id="expr">Klikni na Start…</div>
+              <div class="meta">
+                <span class="badge" id="badgeType">typ –</span>
+                <span class="badge" id="badgeHint">–</span>
+              </div>
+            </div>
+
+            <div class="answerRow">
+              <div class="inputWrap">
+                <input class="answer" id="ans" inputmode="none" autocomplete="off" autocapitalize="off" spellcheck="false"
+                       placeholder="Napiš výsledek…" />
+                <div class="preview" id="preview">Náhled odpovědi…</div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:10px;min-width:240px;flex:0 0 240px">
+                <button class="btn btnOk" id="btnCheck">Zkontrolovat</button>
+                <button class="btn btnPrimary" id="btnNext">Další</button>
+                <div class="status" id="status">—</div>
+              </div>
+            </div>
+
+            <div class="muted small">
+              Pravidla zápisu: zlomky piš jako <b>a/b</b>. Exponent můžeš psát jako <b>^2</b> nebo přes tlačítko.
+              Desetinná čárka může být <b>,</b> nebo <b>.</b> (uzná se obojí).
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- KEYBOARD DOCK -->
+  <div class="kbDock" id="kbDock" aria-hidden="true">
+    <div class="kb">
+      <div class="kbTop">
+        <div>Klávesnice</div>
+        <div class="row">
+          <button class="btn btnGhost" id="btnHideKb" type="button">Skrýt</button>
+        </div>
+      </div>
+
+      <div class="kbGrid" id="kbGrid"></div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ---------- RNG ----------
+  const rnd = (a,b)=> Math.floor(Math.random()*(b-a+1))+a;
+  const pick = arr => arr[rnd(0, arr.length-1)];
+  const shuffle = (arr)=> {
+    for(let i=arr.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [arr[i],arr[j]]=[arr[j],arr[i]];
+    }
+    return arr;
+  };
+
+  // ---------- BigInt Fraction ----------
+  const BI = (n)=> BigInt(n);
+
+  function bgcd(a,b){
+    a = a<0n? -a:a;
+    b = b<0n? -b:b;
+    while(b){ const t=a%b; a=b; b=t; }
+    return a;
+  }
+
+  class Frac{
+    constructor(n,d=1n){
+      if(d===0n) throw new Error("d=0");
+      if(d<0n){ n=-n; d=-d; }
+      const g = bgcd(n,d);
+      this.n = n/g;
+      this.d = d/g;
+    }
+    static fromInt(x){ return new Frac(BI(x),1n); }
+    static fromPow10(k){ // 10^k as Frac
+      if(k>=0) return new Frac(10n**BI(k),1n);
+      return new Frac(1n, 10n**BI(-k));
+    }
+    add(o){ return new Frac(this.n*o.d + o.n*this.d, this.d*o.d); }
+    sub(o){ return new Frac(this.n*o.d - o.n*this.d, this.d*o.d); }
+    mul(o){ return new Frac(this.n*o.n, this.d*o.d); }
+    div(o){ return new Frac(this.n*o.d, this.d*o.n); }
+    neg(){ return new Frac(-this.n,this.d); }
+    eq(o){ return this.n===o.n && this.d===o.d; }
+    powInt(p){
+      const P = BI(p);
+      if(P===0n) return new Frac(1n,1n);
+      if(P<0n){
+        const q = -P;
+        return new Frac(this.d**q, this.n**q);
+      }
+      return new Frac(this.n**P, this.d**P);
+    }
+  }
+
+  // ---------- Parse user answer to Frac ----------
+  // Accept: "-12", "3,5", "3.5", "  7 / 8 ", also allow "+", parentheses ignored.
+  function parseToFrac(txt){
+    if(!txt) return null;
+    let s = txt.trim()
+      .replace(/\s+/g,'')
+      .replace(/[()]/g,'')
+      .replace(/,/g,'.');
+
+    if(!s) return null;
+
+    // Allow leading +-
+    // Fraction?
+    if(s.includes('/')){
+      const parts = s.split('/');
+      if(parts.length!==2) return null;
+      const a = parseToFrac(parts[0]);
+      const b = parseToFrac(parts[1]);
+      if(!a || !b) return null;
+      if(b.n===0n) return null;
+      return a.div(b);
+    }
+
+    // Simple integer/decimal
+    // Validate:
+    if(!/^[-+]?\d+(\.\d+)?$/.test(s)) return null;
+
+    if(!s.includes('.')){
+      return new Frac(BI(s),1n);
+    }
+    const sign = s.startsWith('-') ? -1n : 1n;
+    const t = s.replace(/^[-+]/,'');
+    const [ip, fp] = t.split('.');
+    const den = 10n ** BI(fp.length);
+    const num = BI(ip+fp);
+    return new Frac(sign*num, den);
+  }
+
+  // ---------- Format Frac to string (Czech comma) ----------
+  function fracToDisplay(f){
+    // If integer
+    if(f.d===1n) return f.n.toString();
+
+    // Try terminating decimal (den = 2^a*5^b)
+    let d = f.d;
+    let a=0, b=0;
+    while(d%2n===0n){ d/=2n; a++; }
+    while(d%5n===0n){ d/=5n; b++; }
+    if(d===1n){
+      const k = Math.max(a,b);
+      const scale = 10n**BI(k);
+      const num = f.n * (scale / f.d);
+      const neg = num<0n;
+      const abs = neg? -num : num;
+      const str = abs.toString().padStart(k+1,'0');
+      const head = str.slice(0, -k);
+      const tail = str.slice(-k).replace(/0+$/,'');
+      if(tail.length===0) return (neg?'-':'') + head;
+      return (neg?'-':'') + head + ',' + tail;
+    }
+
+    // Otherwise fraction a/b
+    return `${f.n.toString()}/${f.d.toString()}`;
+  }
+
+  // ---------- Pretty preview rendering ----------
+  function renderPreview(raw){
+    const prev = document.getElementById('preview');
+    if(!raw.trim()){
+      prev.textContent = 'Náhled odpovědi…';
+      return;
+    }
+
+    // We render a minimal “math-like” preview:
+    // - replace a/b with stacked fraction (only first-level, simple)
+    // - replace ^k with superscript
+    // - keep √ and ∛ symbols
+    const container = document.createElement('span');
+
+    // Tokenize by fraction first (simple)
+    // We'll build HTML by scanning chars and handling patterns:
+    const s = raw.trim();
+
+    // helper: escape text
+    const esc = (t)=> t.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+
+    // Convert occurrences like "12/25" or "-3/4" (without spaces) into frac blocks
+    // We do a soft approach: split by regex keeping matches
+    const reFrac = /([-+]?\d+(?:[.,]\d+)?)[ ]*\/[ ]*([-+]?\d+(?:[.,]\d+)?)/g;
+    let last = 0;
+    const frag = document.createDocumentFragment();
+
+    const supMap = {'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','-':'⁻','+':'⁺'};
+    const toSup = (t)=> t.split('').map(ch => supMap[ch] ?? ch).join('');
+
+    const makeTextWithSup = (txt)=>{
+      // replace ^... where ... is signed digits
+      // e.g. 10^6, x^-2
+      const span = document.createElement('span');
+      let out = '';
+      for(let i=0;i<txt.length;i++){
+        const ch = txt[i];
+        if(ch==='^'){
+          // flush
+          if(out){ span.appendChild(document.createTextNode(out)); out=''; }
+          let j=i+1;
+          let exp='';
+          // optional sign
+          if(txt[j]==='-' || txt[j]==='+'){ exp+=txt[j]; j++; }
+          while(j<txt.length && /\d/.test(txt[j])){ exp+=txt[j]; j++; }
+          if(exp){
+            const sup = document.createElement('span');
+            sup.className='sup';
+            sup.textContent = toSup(exp); // uses unicode supers too, but in sup span
+            span.appendChild(sup);
+            i = j-1;
+          }else{
+            // just caret
+            span.appendChild(document.createTextNode('^'));
+          }
+        } else {
+          out += ch;
+        }
+      }
+      if(out) span.appendChild(document.createTextNode(out));
+      return span;
+    };
+
+    let m;
+    while((m = reFrac.exec(s)) !== null){
+      const pre = s.slice(last, m.index);
+      if(pre) frag.appendChild(makeTextWithSup(pre));
+
+      const top = m[1];
+      const bot = m[2];
+      const frac = document.createElement('span');
+      frac.className = 'frac';
+      const a = document.createElement('span'); a.textContent = top.replace(',','.');
+      const bar = document.createElement('span'); bar.className='bar';
+      const b = document.createElement('span'); b.textContent = bot.replace(',','.');
+      frac.appendChild(a); frac.appendChild(bar); frac.appendChild(b);
+      frag.appendChild(frac);
+
+      last = reFrac.lastIndex;
+    }
+    const rest = s.slice(last);
+    if(rest) frag.appendChild(makeTextWithSup(rest));
+
+    prev.innerHTML = '';
+    prev.appendChild(frag);
+  }
+
+  // ---------- Exercise definitions ----------
+  // We build 1..21 labels (same for square/cube; hint changes)
+  const typeLabels = [
+    "1) mocniny celých čísel",
+    "2) hezké odmocniny z výsledků",
+    "3) mocniny 10, 100, 1000…",
+    "4) odmocniny 100, 10 000…",
+    "5) mocniny 0,1; 0,01; …",
+    "6) odmocniny 0,01; 0,0001…",
+    "7) mocnina čísel X0/X00/X000",
+    "8) odmocnina čísel (…00… aby šla hezky)",
+    "9) mocnina čísel 0,0X / 0,000X",
+    "10) odmocnina čísel 0,0X / 0,000X (hezké)",
+    "11) mocnina zlomků X/Y",
+    "12) odmocnina hezkých desetinných (varianta)",
+    "13) mocnina (x ± y)",
+    "14) (-E)^n (náhodně z 1–13)",
+    "15) (-E)^n (náhodně z 1–13)",
+    "16) -E^n (náhodně z 1–13)",
+    "17) -E^n (náhodně z 1–13)",
+    "18) mocnina součinu",
+    "19) odmocnina součinu",
+    "20) součin odmocnin",
+    "21) odmocnina (x ± y)"
+  ];
+
+  // Precompute squares 0..15 and cubes 0..10
+  const squares = Array.from({length:16}, (_,i)=> i*i);
+  const cubeInts = Array.from({length:11}, (_,i)=> i*i*i);
+
+  function makeProblem(powerMode, typeId){
+    // powerMode: 2 or 3
+    // returns { expr, ansFrac, typeId, hint }
+    const nPow = powerMode;
+
+    // helpers
+    const powInt = (x)=> BI(x) ** BI(nPow);
+    const rootSymbol = nPow===2 ? "√" : "∛";
+    const powSymbol = nPow===2 ? "²" : "³";
+
+    const asFracInt = (x)=> new Frac(BI(x),1n);
+
+    const pickIntForPower = ()=>{
+      // user: squares know 0..15; cubes know 0..10 (but we use >=2 often)
+      if(nPow===2) return rnd(4,15);
+      return rnd(2,10);
+    };
+
+    const perfectPows = ()=>{
+      if(nPow===2){
+        // radicands from exercise 1 results: 16..225
+        const arr = [];
+        for(let k=4;k<=15;k++) arr.push(k*k);
+        return arr;
+      } else {
+        const arr = [];
+        for(let k=2;k<=10;k++) arr.push(k*k*k);
+        return arr;
+      }
+    };
+
+    const powsArr = perfectPows();
+
+    const tenPow = (k)=> new Frac(10n**BI(k), 1n);
+    const tenPowInv = (k)=> new Frac(1n, 10n**BI(k));
+
+    const fmtNumCz = (f)=> fracToDisplay(f); // uses comma where possible
+
+    const powExpr = (inner)=> `${inner}${powSymbol}`;
+    const rootExpr = (inner)=> `${rootSymbol}(${inner})`;
+
+    // For types 14-17 we need to generate base E from 1..13 but avoid recursion explosion
+    const genBaseE = ()=>{
+      const baseType = rnd(1,13);
+      return makeProblem(powerMode, baseType);
+    };
+
+    // -------- Types 1..21 --------
+    let expr = "";
+    let ans = null;
+    let hint = (nPow===2) ? "2. mocnina / √" : "3. mocnina / ∛";
+
+    switch(typeId){
+      case 1: {
+        const x = (nPow===2) ? rnd(4,15) : rnd(0,10);
+        expr = powExpr(String(x));
+        ans = asFracInt(x).powInt(nPow);
+        hint = `mocnina celého čísla`;
+      } break;
+
+      case 2: {
+        const rad = pick(powsArr);
+        expr = rootExpr(String(rad));
+        // root is integer
+        const r = Math.round(Math.pow(rad, 1/nPow));
+        ans = asFracInt(r);
+        hint = `hezká odmocnina`;
+      } break;
+
+      case 3: {
+        // base: 10^k, base has up to 7 zeros => k<=7
+        const k = rnd(1,7);
+        const base = 10n**BI(k);
+        expr = powExpr(base.toString());
+        ans = new Frac(base,1n).powInt(nPow);
+        hint = `mocnina desítkové řady`;
+      } break;
+
+      case 4: {
+        // root of 10^(nPow*k) so it's integer 10^k
+        // keep "max 8 nul" style: for square roots => 2k<=8 => k<=4
+        // for cube roots => 3k<=9 => k<=3 (rozumné)
+        const kMax = (nPow===2) ? 4 : 3;
+        const k = rnd(1,kMax);
+        const rad = 10n**BI(nPow*k);
+        expr = rootExpr(rad.toString());
+        ans = new Frac(10n**BI(k),1n);
+        hint = `odmocnina desítkové řady`;
+      } break;
+
+      case 5: {
+        // base: 10^-k up to 6 dec places
+        const k = rnd(1,6);
+        const base = tenPowInv(k);
+        expr = powExpr(fmtNumCz(base));
+        ans = base.powInt(nPow);
+        hint = `mocnina desetinného tvaru`;
+      } break;
+
+      case 6: {
+        // radicand: 10^(-nPow*k), limit "max 8 deset míst" vibe
+        const kMax = (nPow===2) ? 4 : 2; // square: up to 8 dp; cube: up to 6 dp
+        const k = rnd(1,kMax);
+        const rad = tenPowInv(nPow*k);
+        expr = rootExpr(fmtNumCz(rad));
+        ans = tenPowInv(k);
+        hint = `odmocnina desetinného tvaru`;
+      } break;
+
+      case 7: {
+        // X0/X00/X000, x 2..15 (for cubes up to 10)
+        const x = pickIntForPower();
+        const z = rnd(1,3);
+        const baseInt = BI(x) * (10n**BI(z));
+        expr = powExpr(baseInt.toString());
+        ans = new Frac(baseInt,1n).powInt(nPow);
+        hint = `mocnina čísla s nulami`;
+      } break;
+
+      case 8: {
+        // Make it "hezké": radicand = (a * 10^z)^nPow, where a is in skill range
+        // squares: a 4..15, cubes: a 2..10
+        const a = pickIntForPower();
+        const z = rnd(1,3);
+        const inside = BI(a) * (10n**BI(z));
+        const rad = (inside ** BI(nPow));
+        expr = rootExpr(rad.toString());
+        ans = new Frac(inside,1n);
+        hint = `odmocnina čísla s nulami`;
+      } break;
+
+      case 9: {
+        // 0,0X or 0,000X where X is integer 2..15 (cubes:2..10)
+        const x = pickIntForPower();
+        const form = pick([2,4]); // decimals: /100 or /10000
+        const base = new Frac(BI(x), 10n**BI(form));
+        expr = powExpr(fmtNumCz(base));
+        ans = base.powInt(nPow);
+        hint = `mocnina malého desetinného čísla`;
+      } break;
+
+      case 10: {
+        // Hezká odmocnina desetinného: rad = (a/10^k)^nPow
+        const a = (nPow===2) ? rnd(2,15) : rnd(2,10);
+        const k = (nPow===2) ? rnd(1,4) : rnd(1,3); // keep not too tiny
+        const base = new Frac(BI(a), 10n**BI(k));
+        const rad = base.powInt(nPow);
+        expr = rootExpr(fmtNumCz(rad));
+        ans = base;
+        hint = `hezká odmocnina desetinného`;
+      } break;
+
+      case 11: {
+        // (x/y)^nPow
+        const x = (nPow===2) ? rnd(2,15) : rnd(2,10);
+        const y = (nPow===2) ? rnd(2,15) : rnd(2,10);
+        const base = new Frac(BI(x),BI(y));
+        expr = powExpr(`${x}/${y}`);
+        ans = base.powInt(nPow);
+        hint = `mocnina zlomku`;
+      } break;
+
+      case 12: {
+        // Another hezká odmocnina desetinného: use perfect power radicand from integers / 10^(nPow*k)
+        const a = pickIntForPower(); // root result numerator
+        const k = (nPow===2) ? rnd(1,4) : rnd(1,3);
+        const base = new Frac(BI(a), 10n**BI(k));
+        const rad = base.powInt(nPow);
+        expr = rootExpr(fmtNumCz(rad));
+        ans = base;
+        hint = `odmocnina (varianta)`;
+      } break;
+
+      case 13: {
+        // (x ± y)^nPow where result inside between -limit..limit
+        const limit = (nPow===2) ? 15 : 10;
+        let x,y,op,val;
+        while(true){
+          x = rnd(0,limit);
+          y = rnd(0,limit);
+          op = pick(['+','−']);
+          val = (op==='+') ? (x+y) : (x-y);
+          if(Math.abs(val)<=limit) break;
+        }
+        expr = powExpr(`(${x} ${op} ${y})`);
+        ans = asFracInt(val).powInt(nPow);
+        hint = `(x ${op} y)^${nPow}`;
+      } break;
+
+      case 14:
+      case 15: {
+        const base = genBaseE();
+        expr = `(-${base.expr})${powSymbol}`;
+        // (-E)^nPow => if nPow even => same, if odd => neg
+        if(nPow%2===0) ans = base.ansFrac;
+        else ans = base.ansFrac.neg();
+        hint = `pozor na (- … )^${nPow}`;
+      } break;
+
+      case 16:
+      case 17: {
+        const base = genBaseE();
+        // -E^nPow means -(E^nPow)
+        expr = `-${base.expr}`;
+        ans = base.ansFrac.neg();
+        hint = `pozor: -E^${nPow} = -(E^${nPow})`;
+      } break;
+
+      case 18: {
+        // (a·b)^nPow with product <= limit
+        const limit = (nPow===2) ? 15 : 10;
+        let a,b;
+        while(true){
+          a = rnd(2, limit);
+          b = rnd(2, limit);
+          if(a*b<=limit) break;
+        }
+        expr = powExpr(`(${a} · ${b})`);
+        ans = asFracInt(a*b).powInt(nPow);
+        hint = `mocnina součinu`;
+      } break;
+
+      case 19: {
+        // root(a·b) with result <= limit, and inside perfect power
+        const limit = (nPow===2) ? 15 : 10;
+        const r = rnd(2, limit);
+        const inside = r**nPow; // perfect power
+        // factor inside into a*b (not trivial 1*inside)
+        let factors = [];
+        for(let a=2; a<=inside-1; a++){
+          if(inside % a === 0){
+            const b = inside / a;
+            if(b>=2 && b<=2250000) factors.push([a,b]);
+          }
+        }
+        if(factors.length===0){
+          expr = rootExpr(String(inside));
+          ans = asFracInt(r);
+        } else {
+          const [a,b] = pick(factors.filter(([a,b])=> a<=225 && b<=225) || factors);
+          expr = rootExpr(`${a} · ${b}`);
+          ans = asFracInt(r);
+        }
+        hint = `odmocnina součinu`;
+      } break;
+
+      case 20: {
+        // √a · √b = √(ab), choose such that ab is perfect power
+        // easiest: pick r and split inside = r^nPow into a and b
+        const rMax = (nPow===2) ? 15 : 10;
+        const r = rnd(2, rMax);
+        const inside = r**nPow;
+        // choose a from divisors >=2
+        let divs = [];
+        for(let a=2; a<=inside-1; a++){
+          if(inside%a===0) divs.push(a);
+        }
+        if(divs.length===0){
+          expr = `${rootSymbol}(${inside})`;
+          ans = asFracInt(r);
+        } else {
+          const a = pick(divs);
+          const b = inside / a;
+          expr = `${rootSymbol}(${a}) · ${rootSymbol}(${b})`;
+          ans = asFracInt(r);
+        }
+        hint = `součin odmocnin`;
+      } break;
+
+      case 21: {
+        // root(x ± y) with inside between 0..max and perfect power
+        const maxInside = (nPow===2) ? 225 : 1000; // cubes: 10^3 = 1000
+        // pick inside perfect power
+        const rMax = (nPow===2) ? 15 : 10;
+        const r = rnd(0, rMax);
+        const inside = r**nPow;
+        // now pick x and y so x ± y = inside
+        const op = pick(['+','−']);
+        let x,y;
+        if(op==='+'){
+          x = rnd(0, maxInside);
+          y = inside - x;
+          if(y<0) { y = rnd(0, maxInside); x = inside - y; }
+        } else {
+          x = rnd(0, maxInside);
+          y = x - inside;
+          if(y<0) { y = rnd(0, maxInside); x = inside + y; }
+        }
+        // clamp
+        x = Math.max(0, Math.min(maxInside, x));
+        y = Math.max(0, Math.min(maxInside, y));
+        const inside2 = (op==='+') ? (x+y) : (x-y);
+        // ensure perfect power
+        const rr = Math.round(Math.pow(inside2, 1/nPow));
+        if(rr**nPow !== inside2){
+          // fallback direct
+          expr = rootExpr(String(inside));
+          ans = asFracInt(r);
+        } else {
+          expr = rootExpr(`(${x} ${op} ${y})`);
+          ans = asFracInt(rr);
+        }
+        hint = `odmocnina (x ± y)`;
+      } break;
+
+      default: {
+        expr = "—";
+        ans = asFracInt(0);
+      }
+    }
+
+    return { expr, ansFrac: ans, typeId, hint };
+  }
+
+  // ---------- UI state ----------
+  const state = {
+    mode: 2,                // 2 or 3
+    selectedTypes: new Set(),// type ids
+    running: false,
+    current: null,
+    total: 0,
+    ok: 0,
+    lastChecked: false
+  };
+
+  // ---------- DOM ----------
+  const pillMode = document.getElementById('pillMode');
+  const pillStats = document.getElementById('pillStats');
+
+  const tabSquare = document.getElementById('tabSquare');
+  const tabCube = document.getElementById('tabCube');
+
+  const typeList = document.getElementById('typeList');
+  const btnAll = document.getElementById('btnAll');
+  const btnNone = document.getElementById('btnNone');
+  const btnMix = document.getElementById('btnMix');
+  const btnStart = document.getElementById('btnStart');
+  const btnBack = document.getElementById('btnBack');
+  const btnReset = document.getElementById('btnReset');
+
+  const exprEl = document.getElementById('expr');
+  const badgeType = document.getElementById('badgeType');
+  const badgeHint = document.getElementById('badgeHint');
+  const ansEl = document.getElementById('ans');
+  const statusEl = document.getElementById('status');
+  const btnCheck = document.getElementById('btnCheck');
+  const btnNext = document.getElementById('btnNext');
+
+  const cardSetup = document.getElementById('cardSetup');
+  const cardPractice = document.getElementById('cardPractice');
+
+  const kbDock = document.getElementById('kbDock');
+  const kbGrid = document.getElementById('kbGrid');
+  const btnHideKb = document.getElementById('btnHideKb');
+
+  function updatePill(){
+    pillMode.textContent = state.mode===2 ? "2. mocnina" : "3. mocnina";
+    pillStats.textContent = `${state.ok} správně / ${state.total} celkem`;
+  }
+
+  function setMode(m){
+    state.mode = m;
+    tabSquare.classList.toggle('active', m===2);
+    tabCube.classList.toggle('active', m===3);
+    // default selection: all
+    if(state.selectedTypes.size===0){
+      for(let i=1;i<=21;i++) state.selectedTypes.add(i);
+    }
+    renderTypeList();
+    updatePill();
+    buildKeyboard();
+  }
+
+  function renderTypeList(){
+    typeList.innerHTML = '';
+    for(let i=1;i<=21;i++){
+      const lab = typeLabels[i-1];
+      const id = `t${i}`;
+      const wrap = document.createElement('label');
+      wrap.className = 'chk';
+      wrap.htmlFor = id;
+
+      const inp = document.createElement('input');
+      inp.type = 'checkbox';
+      inp.id = id;
+      inp.checked = state.selectedTypes.has(i);
+      inp.addEventListener('change', ()=>{
+        if(inp.checked) state.selectedTypes.add(i);
+        else state.selectedTypes.delete(i);
+      });
+
+      const box = document.createElement('div');
+      const t = document.createElement('div'); t.className='t'; t.textContent = lab;
+      const d = document.createElement('div'); d.className='muted small';
+      d.textContent = (state.mode===2)
+        ? "počítá se přesně (zlomky/čárka) – “hezké” hodnoty pro paměť"
+        : "u třetích mocnin/odmocnin držíme výsledky do 10";
+
+      box.appendChild(t); box.appendChild(d);
+      wrap.appendChild(inp); wrap.appendChild(box);
+      typeList.appendChild(wrap);
+    }
+  }
+
+  function showPractice(show){
+    cardSetup.style.display = show ? 'none' : '';
+    // practice is always visible in layout; we only change text and focus
+    if(show){
+      document.getElementById('cardPractice').scrollIntoView({behavior:'smooth', block:'start'});
+    }
+  }
+
+  function pickType(){
+    if(state.selectedTypes.size===0){
+      // fallback all
+      return rnd(1,21);
+    }
+    return pick(Array.from(state.selectedTypes));
+  }
+
+  function newProblem(){
+    const t = pickType();
+    state.current = makeProblem(state.mode, t);
+    state.lastChecked = false;
+    ansEl.value = '';
+    renderPreview('');
+    statusEl.className = 'status';
+    statusEl.textContent = '—';
+
+    exprEl.textContent = state.current.expr;
+    badgeType.textContent = `typ ${state.current.typeId}`;
+    badgeHint.textContent = state.current.hint;
+    ansEl.focus();
+    showKeyboard(true);
+  }
+
+  function normalizeForMsg(s){ return s.replace(/\./g,','); }
+
+  function check(){
+    if(!state.current) return;
+    const user = parseToFrac(ansEl.value);
+    if(!user){
+      statusEl.className = 'status bad';
+      statusEl.textContent = 'Nejde přečíst. Zkus číslo, desetinné (,) nebo zlomek a/b.';
+      return;
+    }
+    const ok = user.eq(state.current.ansFrac);
+    state.total += 1;
+    if(ok) state.ok += 1;
+    updatePill();
+
+    const right = fracToDisplay(state.current.ansFrac);
+    if(ok){
+      statusEl.className = 'status ok';
+      statusEl.textContent = 'Správně ✅';
+    } else {
+      statusEl.className = 'status bad';
+      statusEl.textContent = `Špatně ❌ Správně je: ${right}`;
+    }
+    state.lastChecked = true;
+  }
+
+  // ---------- Keyboard ----------
+  function insertAtCursor(input, text){
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? input.value.length;
+    const before = input.value.slice(0,start);
+    const after = input.value.slice(end);
+    input.value = before + text + after;
+    const pos = start + text.length;
+    input.setSelectionRange(pos,pos);
+    input.focus();
+    renderPreview(input.value);
+  }
+  function backspaceAtCursor(input){
+    const start = input.selectionStart ?? input.value.length;
+    const end = input.selectionEnd ?? input.value.length;
+    if(start !== end){
+      insertAtCursor(input, '');
+      return;
+    }
+    if(start<=0) return;
+    const before = input.value.slice(0,start-1);
+    const after = input.value.slice(end);
+    input.value = before + after;
+    const pos = start-1;
+    input.setSelectionRange(pos,pos);
+    input.focus();
+    renderPreview(input.value);
+  }
+
+  function buildKeyboard(){
+    kbGrid.innerHTML = '';
+    const isSq = state.mode===2;
+
+    const keys = [
+      {t:'7'},{t:'8'},{t:'9'},{t:'('},{t:')'},{t:'⌫', cls:'warn', fn:()=>backspaceAtCursor(ansEl)},
+      {t:'4'},{t:'5'},{t:'6'},{t:'+'},{t:'−'},{t:'/' , cls:'alt', tip:'zlomek a/b'},
+      {t:'1'},{t:'2'},{t:'3'},{t:'·'},{t:','},{t:'^', cls:'alt', tip:'exponent (x^2)'},
+      {t:'0'},{t:'-'},{t:' ', cls:'wide', fn:()=>insertAtCursor(ansEl,' ')},
+      {t:'a/b', cls:'alt', fn:()=>insertAtCursor(ansEl,'/'), tip:'zlomková čára'},
+      {t: isSq ? '²' : '³', cls:'alt', fn:()=>insertAtCursor(ansEl, isSq?'^2':'^3'), tip:'rychlé ^2 / ^3'},
+      {t: isSq ? '√' : '∛', cls:'alt', fn:()=>insertAtCursor(ansEl, isSq?'√()':'∛()'), tip:'vlož odmocninu'},
+    ];
+
+    // render
+    keys.forEach(k=>{
+      const b = document.createElement('button');
+      b.type='button';
+      b.className = 'kbtn' + (k.cls?(' '+k.cls):'') + (k.wide?' wide':'');
+      b.textContent = k.t;
+      if(k.tip) b.title = k.tip;
+      b.addEventListener('click', ()=>{
+        if(k.fn) return k.fn();
+        insertAtCursor(ansEl, k.t);
+      });
+      kbGrid.appendChild(b);
+    });
+
+    // bottom row – quick actions
+    const enter = document.createElement('button');
+    enter.type='button';
+    enter.className = 'kbtn alt wider';
+    enter.textContent = 'Zkontrolovat';
+    enter.addEventListener('click', check);
+    kbGrid.appendChild(enter);
+
+    const next = document.createElement('button');
+    next.type='button';
+    next.className = 'kbtn wider';
+    next.textContent = 'Další';
+    next.addEventListener('click', ()=> newProblem());
+    kbGrid.appendChild(next);
+  }
+
+  function showKeyboard(show){
+    kbDock.style.display = show ? 'block' : 'none';
+    kbDock.setAttribute('aria-hidden', show ? 'false' : 'true');
+  }
+
+  // ---------- Events ----------
+  tabSquare.addEventListener('click', ()=> setMode(2));
+  tabCube.addEventListener('click', ()=> setMode(3));
+
+  btnAll.addEventListener('click', ()=>{
+    state.selectedTypes.clear();
+    for(let i=1;i<=21;i++) state.selectedTypes.add(i);
+    renderTypeList();
+  });
+  btnNone.addEventListener('click', ()=>{
+    state.selectedTypes.clear();
+    renderTypeList();
+  });
+  btnMix.addEventListener('click', ()=>{
+    // a sensible default mix (everything)
+    state.selectedTypes.clear();
+    for(let i=1;i<=21;i++) state.selectedTypes.add(i);
+    renderTypeList();
+  });
+
+  btnStart.addEventListener('click', ()=>{
+    if(state.selectedTypes.size===0){
+      // fallback: all
+      for(let i=1;i<=21;i++) state.selectedTypes.add(i);
+    }
+    showPractice(true);
+    newProblem();
+  });
+
+  btnBack.addEventListener('click', ()=>{
+    showKeyboard(false);
+    showPractice(false);
+    exprEl.textContent = 'Klikni na Start…';
+  });
+
+  btnReset.addEventListener('click', ()=>{
+    state.ok = 0; state.total = 0;
+    updatePill();
+    statusEl.className = 'status';
+    statusEl.textContent = '—';
+  });
+
+  btnCheck.addEventListener('click', check);
+  btnNext.addEventListener('click', ()=> newProblem());
+
+  ansEl.addEventListener('focus', ()=> showKeyboard(true));
+  ansEl.addEventListener('input', ()=> renderPreview(ansEl.value));
+  btnHideKb.addEventListener('click', ()=> showKeyboard(false));
+
+  // Enter to check (desktop convenience)
+  ansEl.addEventListener('keydown', (e)=>{
+    if(e.key==='Enter'){
+      e.preventDefault();
+      check();
+    }
+  });
+
+  // init
+  // default: select all types
+  for(let i=1;i<=21;i++) state.selectedTypes.add(i);
+  setMode(2);
+  updatePill();
+  renderTypeList();
+  buildKeyboard();
+})();
+</script>
+</body>
+</html>
